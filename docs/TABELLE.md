@@ -15,6 +15,8 @@ Beim Öffnen einer Datei mit mindestens zwei Zeilen wird zunächst die **erste Z
 
 Die erste Spalte kann beim horizontalen Scrollen zusätzlich fixiert werden. Blattreiter unten wechseln zwischen den Blättern einer Arbeitsmappe. Das Adressfeld springt mit einer Eingabe wie **D25** und Enter zu einer Zelle. Die Formelzeile zeigt deren vollständigen Inhalt. **Strg+F** sucht Zellinhalte im aktuellen Blatt; Enter beziehungsweise „Weitersuchen“ springt zum nächsten Treffer.
 
+**Plot erstellen** zeigt Vorschläge und eine anpassbare Vorschau rechts neben der Tabelle. Ein Rechtsklick auf Spaltenköpfe setzt die Achsen. PNG-, JPG- und SVG-Export stehen bereit; siehe [Plots aus der Tabelle](PLOTS.md).
+
 ## Öffnen und Formate
 
 **Datei → Öffnen**, **Strg+O**, Drag-and-drop auf das Fenster oder Aufruf von Tabelle.exe mit einem Dateipfad als Argument.

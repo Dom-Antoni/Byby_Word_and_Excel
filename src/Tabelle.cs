@@ -99,6 +99,10 @@ internal sealed class Tabelle : Window
     readonly TextBlock status=new TextBlock(),note=new TextBlock(),modeLabel=new TextBlock();
     readonly TabControl worksheets=new TabControl();
     readonly DockPanel searchBar=new DockPanel();
+    readonly PlotPanel plots;
+    readonly Grid workspace=new Grid();
+    readonly ColumnDefinition plotColumn=new ColumnDefinition {Width=new GridLength(0)};
+    readonly GridSplitter plotSplitter=new GridSplitter {Width=5,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Stretch,Visibility=Visibility.Collapsed};
     readonly HashSet<Formats.Worksheet> changed=new HashSet<Formats.Worksheet>();
     readonly List<MenuItem> separatorItems=new List<MenuItem>(),themeItems=new List<MenuItem>();
     List<Formats.Worksheet> workbook;
@@ -107,7 +111,7 @@ internal sealed class Tabelle : Window
     char delimiter=';';char? forcedSeparator;
     bool rendering,editing=true,results,headings,wrap=true,frozen;
     int selectedRow,selectedCol;
-    MenuItem editItem,resultItem,headingsItem,wrapItem,freezeItem;
+    MenuItem editItem,resultItem,headingsItem,wrapItem,freezeItem,plotItem;
     Button applyButton;
     Action appearanceChanged;
     Formats.Worksheet Active {get{return workbook[worksheets.SelectedIndex<0?0:worksheets.SelectedIndex];}}
@@ -131,6 +135,7 @@ internal sealed class Tabelle : Window
         var menus=new Menu {Padding=new Thickness(12,2,12,2)};ribbon.Children.Add(menus);BuildMenus(menus);
         var quick=new WrapPanel {Margin=new Thickness(16,8,16,10)};ribbon.Children.Add(quick);
         Ui.Button(quick,"Öffnen…",Open);Ui.Button(quick,"CSV / TSV speichern…",delegate{Save();});Ui.Button(quick,"Spalten anpassen",FitColumns);
+        Ui.Button(quick,"Plot erstellen",delegate{SetPlotsVisible(true);});
         modeLabel.VerticalAlignment=VerticalAlignment.Center;modeLabel.Margin=new Thickness(12,0,0,0);Theme.Bind(modeLabel,TextBlock.ForegroundProperty,"App.Muted");quick.Children.Add(modeLabel);
         var formulaBar=new DockPanel {Margin=new Thickness(16,10,16,8)};DockPanel.SetDock(formulaBar,Dock.Top);root.Children.Add(formulaBar);
         address.Width=84;address.Padding=new Thickness(8);address.Margin=new Thickness(0,0,10,0);address.ToolTip="Zelladresse, zum Beispiel D25. Enter springt zur Zelle.";
@@ -148,7 +153,9 @@ internal sealed class Tabelle : Window
         DockPanel.SetDock(sheetScroll,Dock.Bottom);root.Children.Add(sheetScroll);
         worksheets.BorderThickness=new Thickness(0);worksheets.SelectionChanged+=delegate(object s,SelectionChangedEventArgs e){if(rendering || e.Source!=worksheets || workbook==null || worksheets.SelectedIndex<0)return;Sync();selectedRow=Offset;selectedCol=0;Render();};
         ConfigureGrid();
-        var frame=new Border {Margin=new Thickness(16,0,16,0),BorderThickness=new Thickness(1),Child=grid};Theme.Bind(frame,Border.BorderBrushProperty,"App.Border");root.Children.Add(frame);
+        workspace.Margin=new Thickness(16,0,16,0);workspace.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(1,GridUnitType.Star),MinWidth=250});workspace.ColumnDefinitions.Add(new ColumnDefinition {Width=GridLength.Auto});workspace.ColumnDefinitions.Add(plotColumn);
+        var frame=new Border {BorderThickness=new Thickness(1),Child=grid};Theme.Bind(frame,Border.BorderBrushProperty,"App.Border");workspace.Children.Add(frame);
+        plots=new PlotPanel(PlotInput) {Visibility=Visibility.Collapsed};plots.CloseRequested+=delegate{SetPlotsVisible(false);};Grid.SetColumn(plots,2);workspace.Children.Add(plots);Grid.SetColumn(plotSplitter,1);workspace.Children.Add(plotSplitter);root.Children.Add(workspace);
         appearanceChanged=delegate{foreach(var item in themeItems)item.IsChecked=(string)item.Tag==Theme.Current.Mode;};
         Theme.Changed+=appearanceChanged;
         CommandBindings.Add(new System.Windows.Input.CommandBinding(System.Windows.Input.ApplicationCommands.Open,delegate{Open();}));
@@ -158,7 +165,7 @@ internal sealed class Tabelle : Window
         AllowDrop=true;PreviewDragOver+=delegate(object s,DragEventArgs e){if(e.Data.GetDataPresent(DataFormats.FileDrop)){e.Effects=DragDropEffects.Copy;e.Handled=true;}};
         PreviewDrop+=delegate(object s,DragEventArgs e){if(!e.Data.GetDataPresent(DataFormats.FileDrop))return;e.Handled=true;var files=e.Data.GetData(DataFormats.FileDrop) as string[];if(files!=null && files.Length>0 && CanLeave())SafeOpen(files[0]);};
         Closing+=delegate(object s,System.ComponentModel.CancelEventArgs e){e.Cancel=!CanLeave();};
-        Closed+=delegate{Theme.Changed-=appearanceChanged;};
+        Closed+=delegate{Theme.Changed-=appearanceChanged;plots.Dispose();};
         SetBook(new SheetImport {Sheets=new List<Formats.Worksheet>{new Formats.Worksheet {Name="Tabelle 1",Cells=new string[100,26]}},Note="Neue Tabelle · einfache Formeln beginnen mit ="} ,null,false);
     }
     MenuItem Item(ItemsControl parent,string title,Action action=null,string shortcut=null)
@@ -181,6 +188,7 @@ internal sealed class Tabelle : Window
         freezeItem=Check(view,"Erste Spalte beim Scrollen festhalten",false,delegate(MenuItem item){frozen=item.IsChecked;grid.FrozenColumnCount=frozen?1:0;});
         wrapItem=Check(view,"Lange Zelltexte umbrechen",true,delegate(MenuItem item){Sync();wrap=item.IsChecked;Render();});
         Item(view,"Spaltenbreiten an Inhalt anpassen",FitColumns);
+        plotItem=Check(view,"Plots anzeigen",false,delegate(MenuItem item){SetPlotsVisible(item.IsChecked);});
         var zoom=Item(view,"Zoom");foreach(int percent in new[]{80,100,120,150}){int chosen=percent;Item(zoom,percent+" %",delegate{grid.FontSize=14.0*chosen/100;grid.MinRowHeight=38.0*chosen/100;});}
         resultItem=Check(view,"Ergebnisse statt Formeln anzeigen",false,delegate(MenuItem item){Sync();results=item.IsChecked;Render();});
         var modes=Item(view,"Darstellung");foreach(string mode in new[]{"System","Light","Dark"}){string chosen=mode;var item=Item(modes,mode=="System"?"Wie Windows":mode=="Light"?"Hell":"Dunkel",delegate{Theme.Set(chosen,Theme.Current.DarkDocument);});item.IsCheckable=true;item.IsChecked=Theme.Current.Mode==mode;item.Tag=mode;themeItems.Add(item);}
@@ -207,9 +215,30 @@ internal sealed class Tabelle : Window
             if(rendering || grid.CurrentCell.Column==null)return;var item=grid.CurrentItem as DataRowView;if(item==null || table==null)return;
             int row=table.Rows.IndexOf(item.Row);if(row<0)return;int column=grid.Columns.IndexOf(grid.CurrentCell.Column);if(column<0)return;selectedRow=row+Offset;selectedCol=column;ShowCell();
         };
+        grid.SelectedCellsChanged+=delegate{if(plots!=null)plots.SelectionChanged();};
+    }
+    void SetPlotsVisible(bool visible)
+    {
+        plots.Visibility=visible?Visibility.Visible:Visibility.Collapsed;plotSplitter.Visibility=plots.Visibility;
+        plotColumn.MinWidth=visible?380:0;plotColumn.Width=new GridLength(visible?Math.Min(540,Math.Max(400,ActualWidth*.42)):0);plotItem.IsChecked=visible;
+        if(visible)plots.Open();
+        else plots.Hide();
+    }
+    PlotSource PlotInput()
+    {
+        Sync();var indices=new Dictionary<DataRow,int>();for(int r=0;r<table.Rows.Count;r++)indices[table.Rows[r]]=r+Offset;
+        var selected=grid.SelectedCells.Select(cell=>cell.Item as DataRowView).Where(item=>item!=null && indices.ContainsKey(item.Row)).Select(item=>indices[item.Row]).Distinct().ToArray();
+        return new PlotSource {Identity=Active,Name=Active.Name,Cells=Cells,Headings=headings,SelectedRows=selected};
+    }
+    void PlotAxis(int column,int axis){SetPlotsVisible(true);plots.Assign(column,axis);}
+    Style PlotHeader(int column)
+    {
+        var menu=new ContextMenu();Item(menu,"Als X-Achse verwenden",delegate{PlotAxis(column,0);});Item(menu,"Als Y-Achse verwenden",delegate{PlotAxis(column,1);});Item(menu,"Als zweite Y-Reihe verwenden",delegate{PlotAxis(column,2);});menu.Items.Add(new Separator());Item(menu,"Plot erstellen",delegate{SetPlotsVisible(true);});
+        var style=new Style(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader),(Style)grid.FindResource(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader)));style.Setters.Add(new Setter(FrameworkElement.ContextMenuProperty,menu));return style;
     }
     void SetBook(SheetImport imported,string fileName,bool viewing)
     {
+        plots.Reset();
         rendering=true;
         try{workbook=imported.Sheets;path=fileName;sourceText=imported.Text;delimiter=imported.Separator;importNote=imported.Note;changed.Clear();
             editing=!viewing;results=false;headings=viewing && CellsFor(0).GetLength(0)>1;editItem.IsChecked=editing;resultItem.IsChecked=results;headingsItem.IsChecked=headings;
@@ -227,7 +256,7 @@ internal sealed class Tabelle : Window
     void Open(){if(!CanLeave())return;var dialog=new OpenFileDialog {Filter=SheetFiles.Filter};if(dialog.ShowDialog()==true)SafeOpen(dialog.FileName);}
     void New(){if(!CanLeave())return;SetBook(new SheetImport {Sheets=new List<Formats.Worksheet>{new Formats.Worksheet {Name="Tabelle 1",Cells=new string[100,26]}},Note="Neue Tabelle · einfache Formeln beginnen mit ="},null,false);}
     void Sync(){grid.CommitEdit(DataGridEditingUnit.Cell,true);grid.CommitEdit(DataGridEditingUnit.Row,true);}
-    void MarkChanged(){changed.Add(Active);UpdateTitle();UpdateStatus();}
+    void MarkChanged(){changed.Add(Active);UpdateTitle();UpdateStatus();plots.SourceChanged();}
     void UpdateTitle(){Title=(changed.Count>0?"● ":"")+(path==null?"Unbenannt":Path.GetFileName(path))+" · Tabelle";}
     bool CanLeave()
     {
@@ -252,7 +281,7 @@ internal sealed class Tabelle : Window
                 table.Columns.Add("C"+c,typeof(string));string name=headings?(Cells[0,c]??"").Replace("\r"," ").Replace("\n"," "):"";
                 string title=Sheet.Column(c)+(name==""?"":"\n"+name);
                 var display=new Style(typeof(TextBlock));display.Setters.Add(new Setter(FrameworkElement.MarginProperty,new Thickness(12,8,12,8)));display.Setters.Add(new Setter(TextBlock.TextWrappingProperty,wrap?TextWrapping.Wrap:TextWrapping.NoWrap));display.Setters.Add(new Setter(TextBlock.TextTrimmingProperty,TextTrimming.CharacterEllipsis));display.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center));
-                grid.Columns.Add(new DataGridTextColumn {Header=title,Binding=new System.Windows.Data.Binding("C"+c),ElementStyle=display,MinWidth=100,MaxWidth=900,Width=new DataGridLength(160)});
+                grid.Columns.Add(new DataGridTextColumn {Header=title,HeaderStyle=PlotHeader(c),Binding=new System.Windows.Data.Binding("C"+c),ElementStyle=display,MinWidth=100,MaxWidth=900,Width=new DataGridLength(160)});
             }
             for(int r=Offset;r<Cells.GetLength(0);r++)
             {
@@ -265,14 +294,14 @@ internal sealed class Tabelle : Window
             rendered.ColumnChanged+=delegate(object s,DataColumnChangeEventArgs e)
             {
                 int row=rendered.Rows.IndexOf(e.Row);if(row<0 || !editing || results)return;string value=Convert.ToString(e.ProposedValue);
-                if(sheet.Cells[row+offset,e.Column.Ordinal]!=value){sheet.Cells[row+offset,e.Column.Ordinal]=value;changed.Add(sheet);UpdateTitle();UpdateStatus();}
+                if(sheet.Cells[row+offset,e.Column.Ordinal]!=value){sheet.Cells[row+offset,e.Column.Ordinal]=value;changed.Add(sheet);UpdateTitle();UpdateStatus();plots.SourceChanged();}
             };
             grid.ItemsSource=table.DefaultView;grid.IsReadOnly=!editing || results;formula.IsReadOnly=!editing;applyButton.IsEnabled=editing;
             grid.FrozenColumnCount=frozen?1:0;headingsItem.IsChecked=headings;
             selectedRow=Math.Min(Math.Max(Offset,selectedRow),Cells.GetLength(0)-1);selectedCol=Math.Min(selectedCol,Cells.GetLength(1)-1);
         }
         finally{rendering=false;}
-        SelectCell(selectedRow,selectedCol);UpdateStatus();
+        SelectCell(selectedRow,selectedCol);UpdateStatus();plots.SourceChanged();
     }
     void ShowCell()
     {

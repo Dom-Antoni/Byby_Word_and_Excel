@@ -3,6 +3,7 @@ dist-next/
 dist-latest/
 dist-release/
 dist-table/
+dist-plots/
 .downloads/
 vendor/
 *.user
