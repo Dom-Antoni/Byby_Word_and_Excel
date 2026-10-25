@@ -9,7 +9,7 @@ internal sealed class WritingSettingsWindow : Window
     public WritingSettings Value;
     public WritingSettingsWindow(WritingSettings original)
     {
-        Value=original.Copy();Ui.Window(this,"Schreib · Einstellungen");Width=700;Height=740;MinWidth=600;MinHeight=500;WindowStartupLocation=WindowStartupLocation.CenterOwner;
+        Value=original.Copy();Ui.Window(this,"Schreib · Einstellungen");Width=700;Height=Math.Min(740,SystemParameters.WorkArea.Height-32);MinWidth=600;MinHeight=Math.Min(500,SystemParameters.WorkArea.Height-32);WindowStartupLocation=WindowStartupLocation.CenterOwner;
         var root=new DockPanel {Margin=new Thickness(22)};Content=root;
         var actions=new StackPanel {Orientation=Orientation.Horizontal,Margin=new Thickness(0,14,0,0)};DockPanel.SetDock(actions,Dock.Bottom);root.Children.Add(actions);
         var scroll=new ScrollViewer {VerticalScrollBarVisibility=ScrollBarVisibility.Auto};root.Children.Add(scroll);var fields=new StackPanel();scroll.Content=fields;
@@ -33,7 +33,7 @@ internal sealed class WritingSettingsWindow : Window
             Value.Disabled=Lines(disabled.Text).Where(x=>x.StartsWith("lt:")).ToList();foreach(var pair in toggles)if(pair.Value.IsChecked!=true)Value.Disabled.Add(pair.Key);
             DialogResult=true;
         });
-        Ui.Button(actions,"Abbrechen",delegate{DialogResult=false;});
+        Ui.Button(actions,"Abbrechen",delegate{DialogResult=false;}).IsCancel=true;
     }
     static List<string> Lines(string text){return text.Split('\n').Select(x=>x.Trim()).Where(x=>x.Length>0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();}
     static void Label(Panel panel,string text,int size){panel.Children.Add(new TextBlock {Text=text,FontSize=size,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,10,0,6)});}
