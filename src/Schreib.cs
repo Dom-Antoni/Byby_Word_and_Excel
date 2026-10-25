@@ -42,7 +42,7 @@ internal sealed class Schreib : Window
         status.Margin = new Thickness(20,8,20,8); DockPanel.SetDock(status, Dock.Bottom); root.Children.Add(status);
         var tabs=new TabControl {Width=390,Margin=new Thickness(0,14,14,0)};DockPanel.SetDock(tabs,Dock.Right);root.Children.Add(tabs);
         assistant = new WritingPanel(editor) {Margin=new Thickness(12)};tabs.Items.Add(new TabItem {Header="Schreibprüfung",Content=assistant});
-        references=new ReferencePanel(editor){Margin=new Thickness(12)};var refTab=new TabItem {Header="Referenzen",Content=references};tabs.Items.Add(refTab);
+        references=new ReferencePanel(editor){Margin=new Thickness(12)};var refTab=new TabItem {Header="Referenzen",Content=new ScrollViewer {Content=references,VerticalScrollBarVisibility=ScrollBarVisibility.Auto}};tabs.Items.Add(refTab);
         references.Reveal+=delegate{tabs.SelectedItem=refTab;};references.Changed+=delegate{dirty=true;UpdateTitle();};
         completion=new Completion(editor);
         language.SelectedIndex = assistant.LanguageIndex;

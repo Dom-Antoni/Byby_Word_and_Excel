@@ -123,7 +123,7 @@ internal sealed class ReferencePanel : DockPanel
     {
         var source=References.FirstOrDefault(x=>x.Id==id);if(source==null)return;ReturnPosition=editor.SelectionStart;
         if(Reveal!=null)Reveal();RefreshBibliography();
-        foreach(ListBoxItem item in bibliography.Items)if(((Reference)item.Tag).Id==id){bibliography.SelectedItem=item;bibliography.ScrollIntoView(item);item.Focus();break;}
+        foreach(ListBoxItem item in bibliography.Items)if(((Reference)item.Tag).Id==id){bibliography.SelectedItem=item;bibliography.ScrollIntoView(item);item.BringIntoView();item.Focus();break;}
         description.Text=source.Bibliography+"\nStrg+Z: zurück zur Textstelle";
     }
     public void Return(){if(!ReturnPosition.HasValue)return;int position=ReturnPosition.Value;ReturnPosition=null;editor.Focus();editor.Select(position,0);editor.ScrollToLine(position);}
