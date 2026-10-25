@@ -3,7 +3,7 @@
 1. Das vollständige Offline-Paket entpacken. `Schreib.exe`, `runtime`, `languagetool` und `synonyms` gehören zusammen.
    Formatierung, Referenzmanager und Tab-Vervollständigung sind in [REFERENZEN.md](REFERENZEN.md) beschrieben. Für Dokumente mit Quellen das Format `.schreib` verwenden.
 2. Oben Deutsch, English (UK) oder English (US) wählen. Die Sprache gilt für den gesamten Text; gemischtsprachige Absätze werden noch nicht separat erkannt.
-3. Schreiben oder TXT/Markdown öffnen. DOCX wird als unformatierter Text importiert.
+3. Schreiben oder vorhandene Texte öffnen. TXT/Markdown, HTML, DOCX und ODT werden unterstützt; bei HTML und Office-Dateien wird die Formatierung vereinfacht. Details stehen unter [Darstellung und Dateien](ANSICHT-UND-DATEIEN.md).
 4. Nach einer kurzen Schreibpause erscheinen Stilhinweise und die lokale Grammatikprüfung startet. Der erste Start der Java-Prüfung dauert länger. Unten im Hinweisbereich steht, ob wirklich Grammatik geprüft wurde oder nur die eigenen Stilregeln verfügbar sind.
 5. Einen Hinweis anklicken. Die zugehörige Textstelle wird markiert; darunter stehen Erklärung und angebotene Alternativen. Eine Alternative auswählen und „Übernehmen“ anklicken. Normales Rückgängig im Textfeld bleibt verfügbar.
 

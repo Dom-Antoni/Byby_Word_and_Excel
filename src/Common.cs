@@ -13,13 +13,14 @@ internal static class Ui
     {
         window.Title = title; window.Width = 1120; window.Height = 760;
         window.MinWidth = 760; window.MinHeight = 480;
-        window.Background = Paper; window.Foreground = Ink;
+        Theme.Install(window);
         window.FontFamily = new FontFamily("Segoe UI"); window.FontSize = 14;
         window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
     }
     public static Button Button(Panel panel, string label, Action action)
     {
-        var button = new Button { Content = label, Padding = new Thickness(14, 8, 14, 8), Margin = new Thickness(0, 0, 8, 0), Background = Brushes.White };
+        var button = new Button { Content = label, Padding = new Thickness(14, 8, 14, 8), Margin = new Thickness(0, 0, 8, 0) };
+        Theme.Bind(button,Control.BackgroundProperty,"App.Control");Theme.Bind(button,Control.ForegroundProperty,"App.Text");
         button.Click += delegate { try { action(); } catch (Exception ex) { MessageBox.Show(ex.Message, "Aktion fehlgeschlagen", MessageBoxButton.OK, MessageBoxImage.Error); } };
         panel.Children.Add(button); return button;
     }

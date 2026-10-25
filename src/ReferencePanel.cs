@@ -35,7 +35,7 @@ internal sealed class ReferencePanel : DockPanel
         var top=new StackPanel();SetDock(top,Dock.Top);Children.Add(top);
         var buttons=new WrapPanel();top.Children.Add(buttons);
         Ui.Button(buttons,"Referenz hinzufügen…",AddReference);Ui.Button(buttons,"Importieren…",Import);Ui.Button(buttons,"RIS exportieren…",ExportRis);Ui.Button(buttons,"EndNote öffnen",OpenEndNote);
-        top.Children.Add(new TextBlock {Text="Deine lokale Quellenbibliothek · Link / DOI oder vorhandene Quelle",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,0),Foreground=Brushes.DimGray});
+        var libraryHint=new TextBlock {Text="Deine lokale Quellenbibliothek · Link / DOI oder vorhandene Quelle",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,0)};Theme.Bind(libraryHint,TextBlock.ForegroundProperty,"App.Muted");top.Children.Add(libraryHint);
         top.Children.Add(search);search.ToolTip="Autor, Titel, Jahr oder DOI suchen";search.TextChanged+=delegate{RefreshLibrary();};
         top.Children.Add(library);library.SelectionChanged+=delegate{var item=Selected;if(item!=null)description.Text=item.Bibliography;};
         var actions=new WrapPanel {Margin=new Thickness(0,8,0,8)};top.Children.Add(actions);Ui.Button(actions,"Zitieren",Insert);Ui.Button(actions,"Alle hinzufügen",AddAll);
@@ -45,7 +45,7 @@ internal sealed class ReferencePanel : DockPanel
         style.SelectionChanged+=delegate{Numbered=style.SelectedIndex==1;UpdateCitationLabels();RefreshBibliography();Notify();};
         top.Children.Add(new TextBlock {Text="Literaturverzeichnis",FontSize=18,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,8,0,6)});top.Children.Add(count);
         bibliography.HorizontalContentAlignment=HorizontalAlignment.Stretch;ScrollViewer.SetHorizontalScrollBarVisibility(bibliography,ScrollBarVisibility.Disabled);Children.Add(bibliography);
-        editor.CitationClicked+=Jump;editor.TextChanged+=delegate{ReturnPosition=null;RefreshBibliography();};
+        editor.CitationClicked+=Jump;editor.TextChanged+=delegate{if(editor.PresentationChanging)return;ReturnPosition=null;RefreshBibliography();};
         editor.PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Z && Keyboard.Modifiers==ModifierKeys.Control && ReturnPosition.HasValue){Return();e.Handled=true;}};
         PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Z && Keyboard.Modifiers==ModifierKeys.Control && ReturnPosition.HasValue){Return();e.Handled=true;}};
         RefreshLibrary();
@@ -113,6 +113,7 @@ internal sealed class ReferencePanel : DockPanel
     }
     void Insert(Reference reference)
     {
+        if(editor.IsReadOnly){MessageBox.Show("Die Quelle ist verfügbar. Zum Einfügen bitte den Lesemodus unter Ansicht ausschalten.","Lesemodus");return;}
         int number=References.IndexOf(reference)+1;
         int position=editor.SelectionStart+editor.SelectionLength;editor.Select(position,0);
         if(position>0 && !char.IsWhiteSpace(editor.Text[position-1]) && editor.Text[position-1]!='(' && editor.Text[position-1]!='['){editor.SelectedText=" ";editor.Select(position+1,0);}
@@ -129,6 +130,7 @@ internal sealed class ReferencePanel : DockPanel
     public void Return(){if(!ReturnPosition.HasValue)return;int position=ReturnPosition.Value;ReturnPosition=null;editor.Focus();editor.Select(position,0);editor.ScrollToLine(position);}
     void ConnectTemporary()
     {
+        if(editor.IsReadOnly)throw new InvalidOperationException("Zum Verknüpfen bitte den Lesemodus unter Ansicht ausschalten.");
         var matches=Regex.Matches(editor.Text,@"\{[^{}]*#(?<record>\d+)[^{}]*\}").Cast<Match>().Reverse().ToArray();int linked=0,unresolved=0;
         foreach(var match in matches){var candidates=References.Where(x=>x.RecordNumber==match.Groups["record"].Value).ToArray();if(candidates.Length!=1 || match.Value.Contains(";")){unresolved++;continue;}editor.Select(match.Index,match.Length);editor.InsertCitation(candidates[0],"("+candidates[0].Cite+")");linked++;}
         description.Text=linked+" EndNote-Platzhalter verbunden. "+unresolved+" mehrdeutige oder mehrteilige Platzhalter unverändert belassen.";RefreshBibliography();Notify();

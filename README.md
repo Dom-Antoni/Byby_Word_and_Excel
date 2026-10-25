@@ -12,6 +12,10 @@ Für die Entwicklung unter Windows x64 zunächst `setup-offline.ps1`, danach `bu
 
 ## Schreib
 
+Die Oberfläche ist in **Datei, Bearbeiten, Format, Referenzen, Prüfen und Ansicht** gegliedert. Unter **Ansicht → Darstellung** stehen Hell, Dunkel und „Wie Windows“ bereit; die Dokumentfläche lässt sich separat abdunkeln. Ein Lesemodus und eine ausblendbare Seitenleiste erleichtern das Anzeigen fremder Texte. [Darstellung und unterstützte Dateiformate](docs/ANSICHT-UND-DATEIEN.md).
+
+Zusätzlich zu Schreib/RTF/TXT lassen sich HTML, DOCX/DOCM/DOTX und ODT/OTT mit vereinfachter Formatierung importieren. Die Originaldatei wird dabei nicht überschrieben. Altes binäres DOC und PDF werden nicht direkt unterstützt. Dateien können auch per Drag-and-drop oder über `Schreib.exe "Dateipfad"` geöffnet werden.
+
 Neu: Word-ähnliche Dokumentfläche mit Formatierung, lokale Wortvorschläge (Pfeiltasten + Tab), anklickbare farbige Zitate und ein Literaturbereich. Referenzmanager werden über EndNote-XML, RIS und CSL-JSON angebunden. EndNotes dokumentierter RTF-/Format-Paper-Weg steht für dessen Zitierstile bereit; es gibt keine direkte ENL-Datenbanksynchronisation und kein eingebettetes Word-Add-in. Details: [Referenzen, Dokumente und Wortvorschläge](docs/REFERENZEN.md).
 
 **Referenz per Link hinzufügen:** Im Dokument rechtsklicken → „Referenz hinzufügen“ → „Aus Link / DOI“ → „Angaben abrufen“. Gefundene Metadaten prüfen und „Speichern & zitieren“ wählen. Eine eigene lokale Quellenbibliothek speichert die bestätigten Einträge dokumentübergreifend. Optionaler Internetzugriff findet nur beim ausdrücklich gestarteten Linkabruf statt; die Grammatikprüfung und bereits gespeicherte Quellen funktionieren offline. Fehlende Angaben lassen sich manuell ergänzen, ohne KI oder Onlinekonto. RIS-Export erlaubt die Weitergabe an EndNote, Zotero und Mendeley.
@@ -19,7 +23,7 @@ Neu: Word-ähnliche Dokumentfläche mit Formatierung, lokale Wortvorschläge (Pf
 Zum Weiterbearbeiten mit Formatierung und Quellen `.schreib` verwenden. RTF-Export erstellt eine separate formatierte Datei; TXT/Markdown bleiben reine Textformate. Die App bleibt eine schlanke Schreibanwendung ohne vollständiges Word-Seitenlayout.
 
 - Texte schreiben und lesen, formatiert als `.schreib` oder RTF und unformatiert als TXT/Markdown speichern.
-- DOCX als reinen Text importieren. Die Originaldatei wird dabei nicht überschrieben. Bilder, Layout, Kommentare, Kopf-/Fußzeilen und komplexe Inhalte werden nicht übernommen.
+- DOCX mit Grundformatierung importieren. Die Originaldatei wird dabei nicht überschrieben. Bilder werden als Textmarkierungen und Tabellen vereinfacht dargestellt; exaktes Seitenlayout und komplexe Word-Funktionen werden nicht vollständig übernommen.
 - Lokale Rechtschreib-, Grammatik- und Zeichensetzungsprüfung durch LanguageTool 6.6, mit Deutsch, britischem oder amerikanischem Englisch. „Prüfen“ startet eine Prüfung sofort; nach Textänderungen wird automatisch geprüft.
 - Kategorisierte Hinweise mit Erklärung: Stelle auswählen, markierten Text prüfen, einen angebotenen Vorschlag übernehmen, Fundstelle ignorieren oder Regel abschalten. Ohne passende Ersatzformulierung bleibt der Hinweis eine Hilfestellung zum eigenen Überarbeiten.
 - Wiederholungen mit einstellbarem Abstand; häufige Funktionswörter werden normalerweise ausgelassen, direkt doppelte Wörter bleiben sichtbar. Heuristische Wortstämme und einige unregelmäßige Formen erfassen mögliche Wortfamilien. Das ist keine vollständige morphologische Analyse.
@@ -45,7 +49,7 @@ Nicht unterstützt: alte DOC/XLS-Binärdateien, Makros, Diagramme, komplexe Exce
 
 ## Qualität und Entwicklung
 
-`test.ps1` baut beide Programme und prüft CSV, Formeln, atomaren Dateiersatz, DOCX-/XLSX-Import sowie die Schreibregeln und Parser. `test.ps1 -Integration` prüft zusätzlich echte deutsche und englische LanguageTool-Korrekturen, UTF-16-Positionen nach Emoji, Abbruch und die realen Synonymdaten. Bei der ersten vollständigen Prüfung am 25.10.2026 haben alle 25 bisherigen und 43 Schreibprüfungen bestanden. Die Tests ersetzen keine umfassende Prüfung mit eigenen Alltagstexten.
+`test.ps1` baut beide Programme und prüft CSV, Formeln, atomaren Dateiersatz, Dokumentimporte, Quellenverwaltung sowie die Schreibregeln und Parser. Auch Zeichensätze, Hell-/Dunkeldarstellung und der Erhalt von Formatierung und Rückgängig beim Darstellungswechsel werden geprüft. `test.ps1 -Integration` prüft zusätzlich echte deutsche und englische LanguageTool-Korrekturen, UTF-16-Positionen nach Emoji, Abbruch und die realen Synonymdaten. Am 25.10.2026 haben alle 179 Prüfungen dieses vollständigen lokalen Durchlaufs bestanden. Die Tests ersetzen keine umfassende Prüfung mit eigenen Alltagstexten.
 
 Quellcode: `src/Schreib.cs`, `src/WritingPanel.cs`, `src/Writing.cs`, `src/Grammar.cs`, `src/Synonyms.cs`, `src/WritingSettingsWindow.cs`, `src/Tabelle.cs`, `src/Formats.cs`, `src/Common.cs`. Beide Programme verwenden native WPF-Oberflächen. Der Grammatikclient verwendet nur eine lokale Adresse, ohne Proxy oder Weiterleitungen. Es werden keine Makros oder Formeln als Programmcode ausgeführt. Grammatikprüfungen laufen asynchron; veraltete Ergebnisse werden verworfen. Beim normalen Beenden wird der zugehörige LanguageTool-Prozess gestoppt.
 

@@ -29,7 +29,7 @@ internal sealed class WritingPanel : DockPanel,IDisposable
         catch(Exception ex){settings=new WritingSettings();MessageBox.Show("Einstellungen konnten nicht geladen werden. Die Datei bleibt erhalten.\n"+ex.Message,"Schreib");}
         var top=new StackPanel();DockPanel.SetDock(top,Dock.Top);Children.Add(top);
         title.FontSize=18;title.FontWeight=FontWeights.SemiBold;top.Children.Add(title);
-        state.TextWrapping=TextWrapping.Wrap;state.Foreground=Brushes.DimGray;state.FontSize=12;state.Margin=new Thickness(0,8,0,8);top.Children.Add(state);
+        state.TextWrapping=TextWrapping.Wrap;Theme.Bind(state,TextBlock.ForegroundProperty,"App.Muted");state.FontSize=12;state.Margin=new Thickness(0,8,0,8);top.Children.Add(state);
         category.ItemsSource=new[]{"Alle Hinweise","Rechtschreibung","Grammatik","Wiederholung","Stil","Lesbarkeit","Einheitlichkeit"};category.SelectedIndex=0;category.Margin=new Thickness(0,0,0,12);top.Children.Add(category);category.SelectionChanged+=delegate{Render();};
         var bottom=new StackPanel {Margin=new Thickness(0,12,0,0)};DockPanel.SetDock(bottom,Dock.Bottom);Children.Add(bottom);
         detail.TextWrapping=TextWrapping.Wrap;detail.MaxHeight=110;bottom.Children.Add(detail);
@@ -66,7 +66,7 @@ internal sealed class WritingPanel : DockPanel,IDisposable
         foreach(var issue in visible)
         {
             var label=new TextBlock {Text=issue.Category+"\n"+issue.Message,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(8),MaxWidth=325};
-            label.Foreground=issue.Category=="Rechtschreibung"?Brushes.Firebrick:issue.Category.StartsWith("Grammatik")?Brushes.DarkBlue:Ui.Ink;
+            Theme.Bind(label,TextBlock.ForegroundProperty,issue.Category=="Rechtschreibung"?"App.Error":issue.Category.StartsWith("Grammatik")?"App.Accent":"App.Text");
             hints.Items.Add(new ListBoxItem {Content=label,Tag=issue,HorizontalContentAlignment=HorizontalAlignment.Stretch});
         }
     }
@@ -79,6 +79,7 @@ internal sealed class WritingPanel : DockPanel,IDisposable
     }
     void Apply()
     {
+        if(editor.IsReadOnly){MessageBox.Show("Bitte den Lesemodus unter Ansicht ausschalten, um Änderungen zu übernehmen.","Lesemodus");return;}
         var issue=Selected;var replacement=replacements.SelectedItem as ListBoxItem;if(issue==null || replacement==null)return;
         if(analyzedText!=editor.Text || !issue.Fits(editor.Text)){Check();return;}
         editor.Select(issue.Start,issue.Length);editor.SelectedText=(string)replacement.Tag;editor.Focus();

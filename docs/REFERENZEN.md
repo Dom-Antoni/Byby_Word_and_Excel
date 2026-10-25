@@ -24,7 +24,7 @@ Die App behauptet dabei keine erfolgreiche automatische Übernahme in eine geöf
 
 Die Schreib-App bietet eine weiße Dokumentfläche auf grauem Hintergrund, eine Werkzeugleiste mit Schriftwahl, Schriftgröße, Fett/Kursiv/Unterstreichen, Überschriften und Aufzählungen sowie die Bereiche Schreibprüfung und Referenzen. Ein vollständiges Word-Seitenlayout ist nicht vorgesehen.
 
-Das Format **`.schreib`** speichert formatierten Text, importierte Quellen, Zitatverknüpfungen und den einfachen Zitiermodus gemeinsam. TXT/Markdown speichern nur den Text. RTF erhält Formatierungen, aber nicht die vollständige Quellenbibliothek und den bearbeitbaren Zusammenhang wie `.schreib`. DOCX wird weiterhin nur als Text importiert.
+Das Format **`.schreib`** speichert formatierten Text, importierte Quellen, Zitatverknüpfungen und den einfachen Zitiermodus gemeinsam. TXT/Markdown speichern nur den Text. RTF erhält Formatierungen, aber nicht die vollständige Quellenbibliothek und den bearbeitbaren Zusammenhang wie `.schreib`. DOCX wird mit Grundformatierung importiert; bestehende Word-Zitatfelder werden dabei nicht als bearbeitbare Quellenverknüpfungen übernommen. Siehe [Darstellung und Dateien](ANSICHT-UND-DATEIEN.md).
 
 „RTF exportieren“ erstellt eine separate Datei einschließlich Literaturverzeichnis. „Speichern“ einer normalen RTF-Datei speichert dagegen den aktuellen Dokumenttext, ohne erneut ein Verzeichnis anzuhängen.
 

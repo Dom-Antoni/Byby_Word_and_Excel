@@ -23,9 +23,9 @@ internal sealed class Completion
         foreach(string word in ("although analysis because conclusion consequently discussion evidence example furthermore however important information literature methodology references research results significant therefore understanding writing").Split(' '))english.Add(word);
         string data=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"synonyms","openthesaurus.txt");if(File.Exists(data))foreach(string line in File.ReadLines(data)){if(line.StartsWith("#"))continue;foreach(string word in line.Split(';'))if(Regex.IsMatch(word,@"^\p{L}{3,35}$"))german.Add(word);}
         string dict=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"synonyms","dict","index.noun");if(File.Exists(dict))foreach(string line in File.ReadLines(dict)){string word=line.Split(' ')[0];if(Regex.IsMatch(word,@"^[a-z]{3,35}$"))english.Add(word);}
-        popup.Child=new Border {Child=choices,Background=System.Windows.Media.Brushes.White,BorderBrush=System.Windows.Media.Brushes.LightGray,BorderThickness=new Thickness(1),Padding=new Thickness(4)};
+        var frame=new Border {Child=choices,BorderThickness=new Thickness(1),Padding=new Thickness(4)};Theme.Bind(frame,Border.BackgroundProperty,"App.Control");Theme.Bind(frame,Border.BorderBrushProperty,"App.Border");popup.Child=frame;
         popup.PlacementTarget=editor;popup.Placement=PlacementMode.Relative;
-        editor.TextChanged+=delegate{editor.Dispatcher.BeginInvoke(new Action(Refresh));};editor.SelectionChanged+=delegate{Close();};
+        editor.TextChanged+=delegate{if(!editor.PresentationChanging)editor.Dispatcher.BeginInvoke(new Action(Refresh));};editor.SelectionChanged+=delegate{Close();};
         editor.PreviewKeyDown+=Key;editor.LostKeyboardFocus+=delegate{if(!choices.IsKeyboardFocusWithin)Close();};
         choices.PreviewKeyDown+=Key;
     }
