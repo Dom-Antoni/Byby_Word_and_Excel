@@ -2,6 +2,8 @@
 
 Zwei kleine, getrennte Windows-Desktop-Apps, um alltägliches Schreiben und einfache Tabellenarbeit ohne Microsoft Office und ohne Abonnement zu erledigen.
 
+**Eigene App-Symbole:** Tabelle verwendet einen einfarbig grünen Taschenrechner, Schreib eine einfarbig blaue Tastatur. Die Icons sind in den EXE-Dateien und Fenstern eingebettet. [Quellen und Build](docs/APP-ICONS.md).
+
 **Stand: Schreibassistenz mit lokaler Grammatik- und Stilprüfung; noch kein vollständiger Office-Ersatz.** Der Schwerpunkt liegt auf Schreiben und Sprachkorrektur für Deutsch und Englisch. Tabellen bleiben auf Ansicht, Bearbeitung und einfache Rechnungen begrenzt. Kein Konto, keine Cloud und keine Telemetrie. Die Grammatikprüfung kommuniziert ausschließlich mit einem mitgelieferten Prozess auf `127.0.0.1`; kein Text wird ins Internet geschickt. GitHub wird für Entwicklung und Downloads verwendet.
 
 ## Starten

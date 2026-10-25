@@ -4,16 +4,29 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 internal static class Ui
 {
     public static readonly Brush Ink = new SolidColorBrush(Color.FromRgb(31, 47, 57));
     public static readonly Brush Paper = new SolidColorBrush(Color.FromRgb(246, 247, 243));
+    static readonly ImageSource AppIcon=ReadIcon();
+    static ImageSource ReadIcon()
+    {
+        using(var stream=System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Byby.AppIcon.ico"))
+        {
+            if(stream==null)return null;
+            var decoder=BitmapDecoder.Create(stream,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad);
+            BitmapFrame best=null;foreach(var frame in decoder.Frames)if(best==null || frame.PixelWidth>best.PixelWidth)best=frame;
+            if(best!=null && best.CanFreeze)best.Freeze();return best;
+        }
+    }
     public static void Window(Window window, string title)
     {
         window.Title = title; window.Width = 1120; window.Height = 760;
         window.MinWidth = 760; window.MinHeight = 480;
         Theme.Install(window);
+        if(AppIcon!=null)window.Icon=AppIcon;
         window.FontFamily = new FontFamily("Segoe UI"); window.FontSize = 14;
         window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
     }

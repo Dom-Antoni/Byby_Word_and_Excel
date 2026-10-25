@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256">
+  <title>Schreib – blaue Tastatur</title>
+  <path fill="none" stroke="#2463C7" stroke-width="4" stroke-linecap="round" d="M32 17 V12 Q32 7 38 7 H44"/>
+  <path fill="#2463C7" fill-rule="evenodd" d="M10 17 H54 Q60 17 60 23 V49 Q60 55 54 55 H10 Q4 55 4 49 V23 Q4 17 10 17 Z
+    M10 24 H16 V29 H10 Z M20 24 H26 V29 H20 Z M30 24 H36 V29 H30 Z M40 24 H46 V29 H40 Z M50 24 H55 V29 H50 Z
+    M10 33 H16 V38 H10 Z M20 33 H26 V38 H20 Z M30 33 H36 V38 H30 Z M40 33 H46 V38 H40 Z M50 33 H55 V38 H50 Z
+    M10 43 H16 V48 H10 Z M20 43 H44 V48 H20 Z M48 43 H55 V48 H48 Z"/>
+</svg>

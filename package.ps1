@@ -1,7 +1,7 @@
 param([string]$OutputDirectory='dist')
 $ErrorActionPreference = 'Stop'
 $output = Join-Path $PSScriptRoot $OutputDirectory
-foreach ($required in @('Schreib.exe','Tabelle.exe','runtime/bin/java.exe','languagetool/languagetool-server.jar','synonyms/openthesaurus.txt','synonyms/dict/data.noun','synonyms/dict/LICENSE.txt')) {
+foreach ($required in @('Schreib.exe','Tabelle.exe','icons/Schreib.ico','icons/Tabelle.ico','runtime/bin/java.exe','languagetool/languagetool-server.jar','synonyms/openthesaurus.txt','synonyms/dict/data.noun','synonyms/dict/LICENSE.txt')) {
     if (!(Test-Path -LiteralPath (Join-Path $output $required))) { throw "Offline-Paket unvollständig: $required. setup-offline.ps1 und build.ps1 ausführen." }
 }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -15,7 +15,7 @@ try {
     foreach ($name in @('README.md','LICENSE','THIRD-PARTY-NOTICES.md')) {
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, (Join-Path $PSScriptRoot $name), $name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
     }
-    foreach ($name in @('runtime','languagetool','synonyms')) {
+    foreach ($name in @('runtime','languagetool','synonyms','icons')) {
         Get-ChildItem -LiteralPath (Join-Path $output $name) -File -Recurse | ForEach-Object {
             $relative = $_.FullName.Substring($output.Length + 1).Replace('\','/')
             [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $_.FullName, $relative, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
