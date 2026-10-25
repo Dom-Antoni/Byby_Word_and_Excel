@@ -12,8 +12,8 @@ internal sealed class PlotPanel : DockPanel,IDisposable
 {
     sealed class Choice {public int Index;public string Label;public override string ToString(){return Label;}}
     readonly Func<PlotSource> source;
-    readonly ComboBox kind=new ComboBox(),x=new ComboBox(),y=new ComboBox(),y2=new ComboBox(),aggregate=new ComboBox(),numbers=new ComboBox(),resolution=new ComboBox();
-    readonly TextBox title=new TextBox(),xLabel=new TextBox(),yLabel=new TextBox(),bins=new TextBox(),limit=new TextBox();
+    readonly ComboBox kind=new ComboBox(),x=new ComboBox(),y=new ComboBox(),y2=new ComboBox(),group=new ComboBox(),aggregate=new ComboBox(),numbers=new ComboBox(),resolution=new ComboBox();
+    readonly TextBox title=new TextBox(),xLabel=new TextBox(),yLabel=new TextBox(),bins=new TextBox(),limit=new TextBox(),groupLimit=new TextBox();
     readonly CheckBox selected=new CheckBox {Content="Nur markierte Zeilen"},sort=new CheckBox {Content="Kategorien nach Betrag sortieren"},zero=new CheckBox {Content="Y-Achse ab null"},dark=new CheckBox {Content="Dunkler Plot-Hintergrund"};
     readonly TextBlock hint=new TextBlock(),notice=new TextBlock();
     readonly Button export;
@@ -26,7 +26,10 @@ internal sealed class PlotPanel : DockPanel,IDisposable
     object identity;
     bool updating,refreshColumns;
     public event Action CloseRequested;
+    public event Action RolesChanged;
     public PlotData Current {get{return view.Data;}}
+    public PlotOptions RolesFor(object sourceIdentity){return object.ReferenceEquals(identity,sourceIdentity)?options.Copy():null;}
+    void PublishRoles(){if(RolesChanged!=null)RolesChanged();}
     public PlotPanel(Func<PlotSource> getSource)
     {
         source=getSource;Margin=new Thickness(12,0,0,0);Theme.Bind(this,Panel.BackgroundProperty,"App.Panel");
@@ -41,12 +44,13 @@ internal sealed class PlotPanel : DockPanel,IDisposable
         var axes=new Grid {Margin=new Thickness(10,0,10,5)};axes.ColumnDefinitions.Add(new ColumnDefinition());axes.ColumnDefinitions.Add(new ColumnDefinition());DockPanel.SetDock(axes,Dock.Top);Children.Add(axes);
         var left=new StackPanel {Margin=new Thickness(0,0,5,0)};var right=new StackPanel {Margin=new Thickness(5,0,0,0)};axes.Children.Add(left);Grid.SetColumn(right,1);axes.Children.Add(right);
         Field(left,"X-Achse",x);Field(right,"Y-Achse",y);
+        var grouping=new StackPanel {Margin=new Thickness(10,0,10,2)};Field(grouping,"Gruppieren / Farbe nach (Faktor)",group);DockPanel.SetDock(grouping,Dock.Top);Children.Add(grouping);
         var extra=new StackPanel {Margin=new Thickness(10,4,10,8)};
         Field(extra,"Zweite Y-Reihe (gemeinsame Skala)",y2);
         Field(extra,"Gleiche Kategorien zusammenfassen",aggregate);
         Field(extra,"Titel (leer = automatisch)",title);Field(extra,"X-Beschriftung (leer = automatisch)",xLabel);Field(extra,"Y-Beschriftung (leer = automatisch)",yLabel);
         Field(extra,"Zahlenformat · Auto liest einzelne Kommas/Punkte als Dezimalzeichen",numbers);
-        Field(extra,"Histogrammklassen (0 = automatisch)",bins);Field(extra,"Maximale Kategorien / Gruppen (1–100)",limit);
+        Field(extra,"Histogrammklassen (0 = automatisch)",bins);Field(extra,"Maximale X-Kategorien (1–100)",limit);Field(extra,"Maximale Farbgruppen (1–24)",groupLimit);
         foreach(var check in new[]{selected,sort,zero,dark}){check.Margin=new Thickness(0,5,0,2);extra.Children.Add(check);check.Click+=Changed;}
         resolution.ItemsSource=new[]{"1200 × 800","1800 × 1200","2400 × 1600"};resolution.SelectedIndex=1;Field(extra,"Exportgröße",resolution);
         var scroll=new ScrollViewer {Content=extra,MaxHeight=250,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
@@ -55,8 +59,18 @@ internal sealed class PlotPanel : DockPanel,IDisposable
         notice.FontSize=11;notice.TextWrapping=TextWrapping.Wrap;notice.Margin=new Thickness(10,5,10,8);var footer=new ScrollViewer {Content=notice,MaxHeight=72,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};DockPanel.SetDock(footer,Dock.Bottom);Children.Add(footer);
         var frame=new Border {Margin=new Thickness(10,0,10,0),BorderThickness=new Thickness(1),Child=view};Theme.Bind(frame,Border.BorderBrushProperty,"App.Border");Children.Add(frame);
         aggregate.ItemsSource=new[]{"Jede Zeile einzeln","Summe pro X","Mittelwert pro X","Zeilen pro X"};numbers.ItemsSource=new[]{"Auto","Deutsch","English"};
-        foreach(var combo in new[]{kind,x,y,y2,aggregate,numbers})combo.SelectionChanged+=Changed;
-        foreach(var box in new[]{title,xLabel,yLabel,bins,limit}){box.MaxLength=200;box.TextChanged+=Changed;}
+        foreach(var combo in new[]{kind,x,y,y2,group,aggregate,numbers})combo.SelectionChanged+=Changed;
+        foreach(var box in new[]{title,xLabel,yLabel,bins,limit,groupLimit}){box.MaxLength=200;box.TextChanged+=Changed;}
+        var groupMenu=new ContextMenu();view.ContextMenu=groupMenu;
+        groupMenu.Opened+=delegate
+        {
+            groupMenu.Items.Clear();var input=source();
+            foreach(var choice in Choices(input,"Keine Gruppierung"))
+            {
+                int column=choice.Index;var item=new MenuItem {Header=choice.Label,IsCheckable=true,IsChecked=options.Group==column};
+                item.Click+=delegate{try{Assign(column,3);}catch(Exception ex){ClearPlot();notice.Text=ex.Message;}};groupMenu.Items.Add(item);
+            }
+        };
         timer.Tick+=delegate{timer.Stop();Refresh(false);};
     }
     static void Field(Panel panel,string label,Control input)
@@ -67,7 +81,7 @@ internal sealed class PlotPanel : DockPanel,IDisposable
     void Changed(object sender,RoutedEventArgs e){if(updating)return;timer.Stop();timer.Start();}
     public void SourceChanged(){if(Visibility!=Visibility.Visible)return;refreshColumns=true;timer.Stop();timer.Start();}
     public void SelectionChanged(){if(options.SelectedOnly)SourceChanged();}
-    public void Reset(){timer.Stop();saved.Clear();identity=null;ClearPlot();}
+    public void Reset(){timer.Stop();saved.Clear();identity=null;ClearPlot();PublishRoles();}
     void ClearPlot()
     {
         view.Data=null;view.InvalidateVisual();export.IsEnabled=false;
@@ -84,17 +98,19 @@ internal sealed class PlotPanel : DockPanel,IDisposable
         updating=true;
         try
         {
-            x.ItemsSource=Choices(input,"(Zeilennummer / alle Werte)");y.ItemsSource=Choices(input,"(Anzahl Zeilen)");y2.ItemsSource=Choices(input,"(keine zweite Reihe)");
+            x.ItemsSource=Choices(input,"(Zeilennummer / alle Werte)");y.ItemsSource=Choices(input,"(Anzahl Zeilen)");y2.ItemsSource=Choices(input,"(keine zweite Reihe)");group.ItemsSource=Choices(input,"(keine Gruppierung)");
             Select(x,options.X);Select(y,options.Y);Select(y2,options.Y2);kind.SelectedIndex=(int)options.Kind;aggregate.SelectedIndex=(int)options.Aggregate;numbers.SelectedItem=options.Numbers;
+            Select(group,options.Group);groupLimit.Text=options.GroupLimit.ToString();
             title.Text=options.Title;xLabel.Text=options.XLabel;yLabel.Text=options.YLabel;bins.Text=options.Bins.ToString();limit.Text=options.Limit.ToString();selected.IsChecked=options.SelectedOnly;sort.IsChecked=options.SortValue;zero.IsChecked=options.Zero;dark.IsChecked=options.Dark;
         }finally{updating=false;}
     }
     void ReadOptions()
     {
-        options.Kind=(PlotKind)Math.Max(0,kind.SelectedIndex);options.X=Pick(x);options.Y=Pick(y);options.Y2=Pick(y2);options.Aggregate=(PlotAggregate)Math.Max(0,aggregate.SelectedIndex);
+        options.Kind=(PlotKind)Math.Max(0,kind.SelectedIndex);options.X=Pick(x);options.Y=Pick(y);options.Y2=Pick(y2);options.Group=Pick(group);options.Aggregate=(PlotAggregate)Math.Max(0,aggregate.SelectedIndex);
         options.Title=title.Text;options.XLabel=xLabel.Text;options.YLabel=yLabel.Text;options.Numbers=Convert.ToString(numbers.SelectedItem)??"Auto";
         int count;if(!int.TryParse(bins.Text,out count) || count<0 || count>100){if(options.Kind==PlotKind.Histogram)throw new FormatException("Histogrammklassen: bitte 0 (automatisch) bis 100 eingeben.");count=0;}options.Bins=count;
         if(!int.TryParse(limit.Text,out count) || count<1 || count>100){if(options.Kind==PlotKind.Columns || options.Kind==PlotKind.Bars || options.Kind==PlotKind.Box)throw new FormatException("Maximale Kategorien: bitte 1 bis 100 eingeben.");count=20;}options.Limit=count;
+        if(!int.TryParse(groupLimit.Text,out count) || count<1 || count>24){if(options.Group>=0)throw new FormatException("Farbgruppen: bitte 1 bis 24 eingeben.");count=12;}options.GroupLimit=count;
         options.SelectedOnly=selected.IsChecked==true;options.SortValue=sort.IsChecked==true;options.Zero=zero.IsChecked==true;options.Dark=dark.IsChecked==true;
     }
     void Refresh(bool opening)
@@ -113,10 +129,11 @@ internal sealed class PlotPanel : DockPanel,IDisposable
             refreshColumns=false;
             Render(input);
         }
-        catch(Exception ex){ClearPlot();notice.Text=ex.Message;}
+        catch(Exception ex){ClearPlot();notice.Text=ex.Message;PublishRoles();}
     }
     void Render(PlotSource input)
     {
+        PublishRoles();
         hint.Text=options.Kind==PlotKind.Histogram?"Häufigkeitsverteilung; alle gültigen Werte gehen in die Klassen ein.":options.Kind==PlotKind.Box?"Median, Quartile und Tukey-Whisker (1,5 × IQR); Ausreißer als Punkte.":options.Kind==PlotKind.Line?"Verfügbare Werte werden verbunden; numerische X-Werte und Datumswerte sortiert.":options.Kind==PlotKind.Scatter?"Jede gültige Wertepaar-Zeile ist ein Punkt.":"Gleiche Kategorien: "+(options.Aggregate==PlotAggregate.Rows?"jede Zeile einzeln":options.Aggregate==PlotAggregate.Sum?"Summe":options.Aggregate==PlotAggregate.Mean?"Mittelwert":"Anzahl Zeilen")+".";
         bool grouped=options.Kind==PlotKind.Columns || options.Kind==PlotKind.Bars;
         aggregate.IsEnabled=grouped;sort.IsEnabled=grouped;limit.IsEnabled=grouped || options.Kind==PlotKind.Box;x.IsEnabled=options.Kind!=PlotKind.Histogram;bins.IsEnabled=options.Kind==PlotKind.Histogram;y2.IsEnabled=options.Kind!=PlotKind.Histogram && options.Kind!=PlotKind.Box && !(grouped && options.Aggregate==PlotAggregate.Count);
@@ -139,7 +156,7 @@ internal sealed class PlotPanel : DockPanel,IDisposable
     public void Assign(int column,int axis)
     {
         Refresh(false);var input=source();
-        if(axis==0)options.X=column;else if(axis==1)options.Y=column;else options.Y2=column;
+        if(axis==0)options.X=column;else if(axis==1)options.Y=column;else if(axis==2)options.Y2=column;else options.Group=column;
         if(options.Kind==PlotKind.Histogram && axis==0)options.Kind=PlotKind.Columns;
         if(options.Y<0 && axis==0){var numeric=Plots.Profile(input,options.Numbers).FirstOrDefault(c=>c.IsNumber && c.Index!=column);options.Y=numeric==null?-1:numeric.Index;}
         if(axis==2){if(options.Kind==PlotKind.Histogram || options.Kind==PlotKind.Box)options.Kind=PlotKind.Columns;if(options.Aggregate==PlotAggregate.Count)options.Aggregate=PlotAggregate.Sum;}

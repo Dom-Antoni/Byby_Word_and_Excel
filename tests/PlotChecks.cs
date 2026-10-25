@@ -87,8 +87,52 @@ internal static class PlotChecks
         foreach(string path in new[]{png,jpg}){using(var stream=File.OpenRead(path)){var decoder=BitmapDecoder.Create(stream,BitmapCreateOptions.None,BitmapCacheOption.OnLoad);Assert(decoder.Frames[0].PixelWidth==1200 && decoder.Frames[0].PixelHeight==800,"Exportabmessungen "+Path.GetExtension(path));}}
         Assert(XDocument.Load(svg).Root.Attribute("viewBox").Value=="0 0 1200 800","SVG-Export skalierbar");
         byte[] original=File.ReadAllBytes(png);rejected=false;try{PlotDrawing.Export(new PlotData(),png,1200,800);}catch(FormatException){rejected=true;}Assert(rejected && original.SequenceEqual(File.ReadAllBytes(png)),"Fehlgeschlagener Export erhält vorhandene Datei");
-        Ui(folder);
+        Groups(folder);Ui(folder);
         Console.WriteLine("Plot-Testdateien und Vorschauen: "+folder);
+    }
+    static void Groups(string folder)
+    {
+        var source=Input(new[,]{{"Datum","Standort","Messung A","Messung B"},{"01.10.2026","Nord","2","12"},{"01.10.2026","Süd","20","120"},{"02.10.2026","Nord","4","14"},{"02.10.2026","Süd","40","140"},{"03.10.2026","West","8","18"},{"03.10.2026","","99","999"}});
+        var options=new PlotOptions {Kind=PlotKind.Line,X=0,Y=2,Y2=3,Group=1};
+        var data=Plots.Build(source,options);
+        Assert(data.Groups.Count==3 && data.Series.Count==6 && data.Measures.SequenceEqual(new[]{"Messung A","Messung B"}),"Drei Farbgruppen und zwei Messreihen");
+        Assert(data.Groups.Select(g=>g.Name).SequenceEqual(new[]{"Nord","Süd","West"}) && data.UsedRows==5,"Gruppenreihenfolge und verwendete Zeilen");
+        Assert(data.Notice.Contains("ohne Gruppenangabe") && data.Notice.Contains("Standort"),"Fehlende Gruppen werden erklärt");
+        Assert(data.Series.Where(s=>s.Group=="Nord").All(s=>s.Points.All(p=>p.Y<20)) && data.Series.Where(s=>s.Group=="Süd").All(s=>s.Points.All(p=>p.Y>=20)),"Kurven verbinden nur Werte derselben Gruppe");
+        Assert(data.Series.Where(s=>s.Group=="Nord").Select(s=>s.ColorIndex).Distinct().Count()==1 && data.Series.Where(s=>s.MeasureIndex==0).Select(s=>s.ColorIndex).Distinct().Count()==3,"Farbe kodiert Gruppe, nicht Messreihe");
+        Assert(data.Series.Where(s=>s.Group=="Nord").Select(s=>s.MeasureIndex).SequenceEqual(new[]{0,1}),"Messreihe erhält eigene Linienart");
+        var scene=PlotDrawing.Scene(data,1200,800);
+        var dateLabels=scene.Shapes.Where(s=>s.Type=="text" && System.Text.RegularExpressions.Regex.IsMatch(s.Text??"",@"^\d{2}\.\d{2}\.\d{2}$")).Select(s=>s.Text).ToArray();
+        Assert(dateLabels.Length>1 && dateLabels.Distinct().Count()==dateLabels.Length,"Datumsachse zeigt keine doppelten Tagesbeschriftungen");
+        Assert(scene.Shapes.Where(s=>s.Type=="polyline").Any(s=>s.Dash!=null) && scene.Shapes.Where(s=>s.Type=="polyline").Any(s=>s.Dash==null),"Durchgezogene und gestrichelte Gruppenlinien");
+        Assert(scene.Shapes.Where(s=>s.Tip!=null).Any(s=>s.Type=="circle") && scene.Shapes.Where(s=>s.Tip!=null).Any(s=>s.Type=="rect"),"Kreise und Quadrate unterscheiden Messreihen");
+        Assert(scene.Shapes.Where(s=>s.Type=="text").Any(s=>s.Text.Contains("Farbe · Standort")) && scene.Shapes.Where(s=>s.Type=="text").Any(s=>s.Text=="Messreihe:"),"Getrennte Legenden für Gruppe und Messreihe");
+        XNamespace ns="http://www.w3.org/2000/svg";var svg=PlotDrawing.Svg(scene,data.Notice);
+        Assert(svg.Root.Element(ns+"title").Value==data.Title && svg.Root.Descendants().Any(e=>e.Attribute("stroke-dasharray")!=null),"SVG enthält korrekten Titel und Linienarten");
+        var selected=source.SelectedRows;source.SelectedRows=new[]{1,3};var partial=options.Copy();partial.SelectedOnly=true;
+        var subset=Plots.Build(source,partial);Assert(subset.Groups.Count==1 && subset.Groups[0].ColorIndex==data.Groups[0].ColorIndex,"Farben bleiben bei Zeilenauswahl stabil");source.SelectedRows=selected;
+        var reversed=Input(new[,]{{"Datum","Standort","Messung A","Messung B"},{"03.10.2026","West","8","18"},{"02.10.2026","Süd","40","140"},{"01.10.2026","Nord","2","12"}});
+        Assert(Plots.Build(reversed,options).Groups.All(g=>g.ColorIndex==data.Groups.First(original=>original.Name==g.Name).ColorIndex),"Farben bleiben nach Umsortieren der Zeilen stabil");
+        var limited=options.Copy();limited.GroupLimit=1;var one=Plots.Build(source,limited);Assert(one.Groups.Count==1 && one.Notice.Contains("Erste 1 Gruppen"),"Gruppenlimit sichtbar und nicht still");
+        var categories=Input(new[,]{{"X","Gruppe","Wert"},{"A","Nord","2"},{"B","Süd","10"},{"A","Nord","3"},{"A","Süd","20"},{"B","Nord","4"}});
+        var bars=Plots.Build(categories,new PlotOptions {Kind=PlotKind.Columns,X=0,Y=2,Group=1,Aggregate=PlotAggregate.Sum});
+        Assert(bars.Categories.SequenceEqual(new[]{"A","B"}) && bars.Series.First(s=>s.Group=="Nord").Points.First(p=>p.Label=="A").Y==5,"Zusammenfassung innerhalb von X und Gruppe");
+        Assert(bars.Series.First(s=>s.Group=="Süd").Points.First(p=>p.Label=="A").X==0,"Gleiche X-Kategorien sind über Gruppen ausgerichtet");
+        var raw=Plots.Build(categories,new PlotOptions {Kind=PlotKind.Columns,X=0,Y=2,Group=1,Aggregate=PlotAggregate.Rows});
+        Assert(raw.Categories.Count==5 && raw.Series.SelectMany(s=>s.Points).Select(p=>p.X).Distinct().Count()==5,"Einzelzeilen werden bei gleichen X-Werten nicht überlagert");
+        var hist=Plots.Build(categories,new PlotOptions {Kind=PlotKind.Histogram,Y=2,Group=1,Bins=3});
+        Assert(hist.Series.SelectMany(s=>s.Points).Sum(p=>p.Y)==5 && hist.Series[0].Points.Select(p=>p.X).SequenceEqual(hist.Series[1].Points.Select(p=>p.X)),"Histogramme verwenden gemeinsame Klassen und zählen alle Gruppenwerte");
+        var boxes=Plots.Build(categories,new PlotOptions {Kind=PlotKind.Box,X=0,Y=2,Group=1});
+        Assert(boxes.Boxes.Count==4 && boxes.Boxes.Where(b=>b.Label=="A").Select(b=>b.CategoryIndex).Distinct().Count()==1 && boxes.Boxes.Where(b=>b.Label=="A").Select(b=>b.GroupSlot).Distinct().Count()==2,"Boxplots liegen je X-Kategorie gruppiert nebeneinander");
+        Assert(Enumerable.Range(0,24).Select(PlotPalette.Color).Distinct().Count()==24,"Palette liefert 24 verschiedene Farben");
+        foreach(PlotKind kind in Enum.GetValues(typeof(PlotKind)))
+        {
+            var choice=options.Copy();choice.Kind=kind;if(kind==PlotKind.Scatter)choice.X=2;
+            if(kind==PlotKind.Box || kind==PlotKind.Columns || kind==PlotKind.Bars)choice.X=1;
+            var plot=Plots.Build(source,choice);PlotDrawing.Export(plot,Path.Combine(folder,"Gruppen-"+kind+".png"),1200,800);
+            Assert(PlotDrawing.Scene(plot,1200,800).Shapes.Count>10,"Gruppierter Export "+kind);
+        }
+        PlotDrawing.Export(data,Path.Combine(folder,"Gruppen-Linie.svg"),1200,800);
     }
     static void Ui(string folder)
     {
@@ -113,11 +157,27 @@ internal static class PlotChecks
             panel.ExportTo(Path.Combine(folder,"UI-Export.svg"),1200,800);Assert(File.Exists(Path.Combine(folder,"UI-Export.svg")),"Export aus dem Plotbereich");
             window.SelectCell(2,1);panel.Use(new PlotOptions {Kind=PlotKind.Columns,X=0,Y=1,SelectedOnly=true});Assert(panel.Current.Categories.Count==1 && panel.Current.Categories[0]=="Beta","Markierung in der Tabelle wird für Plot übernommen");
             panel.Use(new PlotOptions {Kind=PlotKind.Columns,X=0,Y=1,Y2=2,Title="Umsatz und Kosten",Aggregate=PlotAggregate.Sum});
+            Layout(root);
+            header=Children<DataGridColumnHeader>(grid).First(h=>h.Column!=null && h.Column.DisplayIndex==0);
+            header.ContextMenu.PlacementTarget=header;header.ContextMenu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent));
+            Assert(((SolidColorBrush)header.Background).Color==((SolidColorBrush)Theme.Color("Plot.Pick")).Color,"Rechtsklick markiert den aktiven Spaltenkopf");
+            header.ContextMenu.RaiseEvent(new RoutedEventArgs(ContextMenu.ClosedEvent));
+            ((MenuItem)header.ContextMenu.Items[3]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Layout(root);
+            Assert(panel.Current.Groups.Count==3 && grid.Columns[0].Header.ToString().Contains("Gruppe"),"Rechtsklick setzt Gruppierung und Headerrolle");
+            header=Children<DataGridColumnHeader>(grid).First(h=>h.Column!=null && h.Column.DisplayIndex==0);
+            Assert(((SolidColorBrush)header.Background).Color==((SolidColorBrush)Theme.Color("Plot.RoleGroup")).Color,"Gruppenspalte behält ihre Rollenfarbe");
+            panel.Use(new PlotOptions {Kind=PlotKind.Line,X=3,Y=1,Y2=2,Group=0,Title="Verlauf nach Gruppe"});
+            Assert(grid.Columns[3].Header.ToString().Contains("X") && grid.Columns[1].Header.ToString().Contains("Y1") && grid.Columns[2].Header.ToString().Contains("Y2"),"Alle Achsenrollen sind sichtbar");
+            var graphMenu=Children<PlotView>(root).First().ContextMenu;graphMenu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent));((MenuItem)graphMenu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Layout(root);
+            Assert(panel.Current.Groups.Count==0 && !grid.Columns[0].Header.ToString().Contains("A · Gruppe"),"Rechtsklick im Plot kann Gruppierung und Rollenmarkierung entfernen");
+            ((MenuItem)graphMenu.Items[1]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Assert(panel.Current.Groups.Count==3,"Rechtsklick im Plot kann Farbgruppierung setzen");
             string mode=Theme.Current.Mode;bool paper=Theme.Current.DarkDocument;
             foreach(string appearance in new[]{"Light","Dark"})
             {
                 Theme.Set(appearance,paper,false);Layout(root);var bitmap=new RenderTargetBitmap(1440,860,96,96,PixelFormats.Pbgra32);bitmap.Render(root);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var file=File.Create(Path.Combine(folder,"Tabelle-Plot-"+appearance+".png")))encoder.Save(file);
                 Assert(Children<PlotView>(root).First().ActualWidth>=300 && Children<PlotView>(root).First().ActualHeight>=200,"Vorschau passt in "+appearance+" in die rechte untere Fläche");
+                header=Children<DataGridColumnHeader>(grid).First(h=>h.Column!=null && h.Column.DisplayIndex==0);
+                Assert(((SolidColorBrush)header.Background).Color==((SolidColorBrush)Theme.Color("Plot.RoleGroup")).Color,"Rollenfarbe folgt "+appearance);
             }
             Theme.Set(mode,paper,false);
             string second=Path.Combine(folder,"Andere.csv");File.WriteAllText(second,"X;Y\n1;3\n2;6");window.OpenPath(second);panel.Open();

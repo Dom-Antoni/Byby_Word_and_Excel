@@ -11,15 +11,15 @@ using System.Xml.Linq;
 
 internal sealed class PlotShape
 {
-    public string Type,Fill="none",Stroke="none",Text,Anchor="start",Tip;
-    public double X,Y,W,H,Radius,Size=12,Weight=1,Rotate;
+    public string Type,Fill="none",Stroke="none",Text,Anchor="start",Tip,Dash;
+    public double X,Y,W,H,Radius,Size=12,Weight=1,Rotate,Opacity=1;
     public bool Bold;
     public List<Point> Points;
 }
 internal sealed class PlotScene
 {
     public double Width,Height;
-    public string Background;
+    public string Background,Title;
     public List<PlotShape> Shapes=new List<PlotShape>();
 }
 internal static class PlotDrawing
@@ -34,6 +34,23 @@ internal static class PlotDrawing
     {scene.Shapes.Add(new PlotShape {Type="rect",X=x,Y=y,W=Math.Max(.5,width),H=Math.Max(.5,height),Fill=fill,Stroke=stroke,Tip=tip});}
     static void Dot(PlotScene scene,double x,double y,double radius,string fill,string tip)
     {scene.Shapes.Add(new PlotShape {Type="circle",X=x,Y=y,Radius=radius,Fill=fill,Tip=tip});}
+    static void Marker(PlotScene scene,double x,double y,double radius,string color,int measure,string tip)
+    {if(measure==0)Dot(scene,x,y,radius,color,tip);else Rect(scene,x-radius,y-radius,2*radius,2*radius,color,tip);}
+    static double Legend(PlotScene scene,double left,double y,double width,double scale,string heading,IEnumerable<Tuple<string,string,int>> entries,string ink,bool measures,bool bars=false)
+    {
+        double font=11*scale,x=left,row=19*scale,end=left+width;
+        Text(scene,Trim(heading,Math.Max(4,(int)(width*.5/(font*.56))))+":",x,y,font,ink,"start",true);x+=Math.Min(width*.5,(heading.Length*font*.56+13*scale));
+        foreach(var entry in entries)
+        {
+            double marker=(measures?32:18)*scale,item=Math.Min(width,(entry.Item1.Length*font*.55+marker+14*scale));
+            if(x+item>end && x>left){x=left;y+=row;}
+            string label=Trim(entry.Item1,Math.Max(3,(int)((item-marker-7*scale)/(font*.55))));
+            if(measures && bars){Rect(scene,x+3*scale,y+scale,18*scale,10*scale,ink);if(entry.Item3>0){var shape=scene.Shapes.Last();shape.Opacity=.55;shape.Stroke=ink;shape.Dash="4 3";}}
+            else if(measures){var line=new PlotShape {Type="line",X=x,Y=y+6*scale,W=x+24*scale,H=y+6*scale,Stroke=ink,Weight=1.8*scale,Dash=entry.Item3==0?null:"4 3"};scene.Shapes.Add(line);Marker(scene,x+12*scale,y+6*scale,2.5*scale,ink,entry.Item3,null);}
+            else Rect(scene,x,y+2*scale,11*scale,9*scale,entry.Item2);
+            Text(scene,label,x+marker,y,font,ink);x+=item;
+        }return y+row;
+    }
     static List<double> Ticks(double min,double max)
     {
         Plots.FiniteSpan(min,max);double span=max-min;if(span<=0)return new List<double>{min};
@@ -53,15 +70,21 @@ internal static class PlotDrawing
     public static PlotScene Scene(PlotData data,double width,double height)
     {
         if(width<260 || height<140)throw new FormatException("Bitte den Plotbereich etwas vergrößern (↗).");
-        var scene=new PlotScene {Width=width,Height=height,Background=data.Dark?"#18212D":"#FFFFFF"};
+        var scene=new PlotScene {Width=width,Height=height,Title=data.Title,Background=data.Dark?"#18212D":"#FFFFFF"};
         string ink=data.Dark?"#EBF0F7":"#243248",muted=data.Dark?"#BCC8DA":"#52617A",grid=data.Dark?"#3A485C":"#E2E8F0";
         double scale=Math.Max(.7,Math.Min(Math.Max(.85,Math.Min(2,width/700)),height/300)),font=12*scale;
-        bool horizontal=data.Kind==PlotKind.Bars;double left=(horizontal?125:76)*scale,right=26*scale,top=(data.Series.Count>1?78:56)*scale,bottom=88*scale;
+        bool horizontal=data.Kind==PlotKind.Bars,grouped=data.Groups.Count>0;double left=(horizontal?125:76)*scale,right=26*scale,top=(data.Series.Count>1?78:56)*scale,bottom=88*scale;
+        if(grouped)
+        {
+            double legendY=Legend(scene,left,41*scale,width-left-right,scale,"Farbe · "+data.GroupLabel,data.Groups.Select(g=>Tuple.Create(g.Name,PlotPalette.Color(g.ColorIndex),0)),ink,false);
+            if(data.Measures.Count>1)legendY=Legend(scene,left,legendY,width-left-right,scale,"Messreihe",data.Measures.Select((name,m)=>Tuple.Create(name,ink,m)),ink,true,data.Kind==PlotKind.Columns || data.Kind==PlotKind.Bars);
+            top=legendY+15*scale;
+        }
         double pw=width-left-right,ph=height-top-bottom;
-        if(ph<55){top=(data.Series.Count>1?65:45)*scale;bottom=55*scale;ph=height-top-bottom;}
+        if(ph<55){if(!grouped)top=(data.Series.Count>1?65:45)*scale;bottom=45*scale;ph=height-top-bottom;}
         if(pw<90 || ph<35)throw new FormatException("Bitte den Plotbereich etwas vergrößern.");
         Text(scene,Trim(data.Title,(int)(width/(10*scale))),left,13*scale,18*scale,ink,"start",true);
-        if(data.Series.Count>1)for(int n=0;n<data.Series.Count;n++){double x=left+n*pw/2;Rect(scene,x,44*scale,12*scale,10*scale,Colors[n%Colors.Length]);Text(scene,Trim(data.Series[n].Name,22),x+18*scale,41*scale,font,ink);}
+        if(!grouped && data.Series.Count>1)for(int n=0;n<data.Series.Count;n++){double x=left+n*pw/2;Rect(scene,x,44*scale,12*scale,10*scale,Colors[n%Colors.Length]);Text(scene,Trim(data.Series[n].Name,22),x+18*scale,41*scale,font,ink);}
         var all=data.Series.SelectMany(x=>x.Points).ToList();
         var ys=all.Select(x=>x.Y).Concat(data.Boxes.SelectMany(x=>new[]{x.Low,x.High}.Concat(x.Outliers))).ToArray();
         if(ys.Length==0)throw new FormatException("Keine darstellbaren Zahlenwerte vorhanden.");
@@ -93,9 +116,17 @@ internal static class PlotDrawing
         {
             if(data.NumericX)
             {
-                foreach(double tick in Ticks(xmin,xmax))
+                var xTicks=Ticks(xmin,xmax);
+                bool wholeDates=data.DateX && all.All(p=>Math.Abs(p.X-Math.Round(p.X))<1e-8);
+                if(wholeDates)
                 {
-                    string label=Plots.Short(tick);if(data.DateX){try{label=DateTime.FromOADate(tick).ToString(xspan<2?"dd.MM HH:mm":"dd.MM.yy",CultureInfo.InvariantCulture);}catch(ArgumentException){}}
+                    double step=Math.Max(1,Math.Ceiling(xspan/5)),first=Math.Ceiling(xmin/step)*step;xTicks=new List<double>();
+                    for(int i=0;i<8;i++){double tick=first+i*step;if(tick>xmax)break;xTicks.Add(tick);}
+                }
+                int every=Math.Max(1,(int)Math.Ceiling(xTicks.Count/Math.Max(2,pw/(font*(data.DateX?10:7)))));
+                for(int index=0;index<xTicks.Count;index+=every)
+                {
+                    double tick=xTicks[index];string label=Plots.Short(tick);if(data.DateX){try{label=DateTime.FromOADate(tick).ToString(!wholeDates && xspan<5?"dd.MM HH:mm":"dd.MM.yy",CultureInfo.InvariantCulture);}catch(ArgumentException){}}
                     Text(scene,label,sx(tick),top+ph+10*scale,font,muted,"middle");
                 }
             }
@@ -110,7 +141,7 @@ internal static class PlotDrawing
         double baseline=horizontal?valueX(0):sy(0);
         for(int n=0;n<data.Series.Count;n++)
         {
-            var series=data.Series[n];string color=Colors[n%Colors.Length];
+            var series=data.Series[n];string color=series.ColorIndex<0?Colors[n%Colors.Length]:PlotPalette.Color(series.ColorIndex);int measure=grouped?series.MeasureIndex:n;
             if(data.Kind==PlotKind.Columns || horizontal)
             {
                 double slot=(horizontal?ph:pw)/Math.Max(1,data.Categories.Count),bar=slot*.76/data.Series.Count;
@@ -119,26 +150,30 @@ internal static class PlotDrawing
                     string tip=point.Label+" · "+series.Name+": "+Plots.Short(point.Y);
                     if(horizontal){double y=top+point.X*slot+slot*.12+n*bar,x=valueX(point.Y);Rect(scene,Math.Min(x,baseline),y,Math.Abs(x-baseline),Math.Max(1,bar-1),color,tip);}
                     else{double x=left+(point.X+.5)*slot-slot*.38+n*bar,y=sy(point.Y);Rect(scene,x,Math.Min(y,baseline),Math.Max(1,bar-1),Math.Abs(y-baseline),color,tip);}
+                    if(grouped && measure>0){var shape=scene.Shapes.Last();shape.Opacity=.55;shape.Stroke=color;shape.Dash="4 3";shape.Weight=1.5*scale;}
                 }
             }
             else if(data.Kind==PlotKind.Histogram)
             {
-                foreach(var point in series.Points)Rect(scene,sx(point.X-data.BinWidth/2)+1,sy(point.Y),Math.Max(1,pw*data.BinWidth/xspan-2),sy(0)-sy(point.Y),color,point.Label+": "+Plots.Short(point.Y));
+                double bar=pw*data.BinWidth/xspan/data.Series.Count;
+                foreach(var point in series.Points)Rect(scene,sx(point.X-data.BinWidth/2)+n*bar+1,sy(point.Y),Math.Max(1,bar-2),sy(0)-sy(point.Y),color,(grouped?series.Group+" · ":"")+point.Label+": "+Plots.Short(point.Y));
             }
             else
             {
-                if(data.Kind==PlotKind.Line && series.Points.Count>1)scene.Shapes.Add(new PlotShape {Type="polyline",Stroke=color,Weight=2*scale,Points=series.Points.Select(p=>new Point(sx(p.X),sy(p.Y))).ToList()});
+                if(data.Kind==PlotKind.Line && series.Points.Count>1)scene.Shapes.Add(new PlotShape {Type="polyline",Stroke=color,Weight=2*scale,Dash=measure==0?null:"4 3",Points=series.Points.Select(p=>new Point(sx(p.X),sy(p.Y))).ToList()});
                 int every=data.Kind==PlotKind.Line?Math.Max(1,series.Points.Count/150):1;
-                for(int i=0;i<series.Points.Count;i+=every){var point=series.Points[i];Dot(scene,sx(point.X),sy(point.Y),(data.Kind==PlotKind.Scatter?3:2.5)*scale,color,point.Label+" · "+series.Name+": "+Plots.Short(point.Y));}
+                for(int i=0;i<series.Points.Count;i+=every){var point=series.Points[i];Marker(scene,sx(point.X),sy(point.Y),(data.Kind==PlotKind.Scatter?3:2.5)*scale,color,measure,point.Label+" · "+series.Name+": "+Plots.Short(point.Y));}
             }
         }
         for(int i=0;i<data.Boxes.Count;i++)
         {
-            var box=data.Boxes[i];double x=sx(i),bw=Math.Min(65*scale,pw/Math.Max(1,data.Boxes.Count)*.6);string color=Colors[0];
+            var box=data.Boxes[i];double slot=pw/Math.Max(1,data.Categories.Count),x=grouped?sx(box.CategoryIndex)-slot*.36+(box.GroupSlot+.5)*slot*.72/data.Groups.Count:sx(i);
+            double bw=Math.Min(65*scale,slot*.6/(grouped?data.Groups.Count:1));string color=box.ColorIndex<0?Colors[0]:PlotPalette.Color(box.ColorIndex);
             Line(scene,x,sy(box.Low),x,sy(box.High),color,1.5*scale);Line(scene,x-bw*.25,sy(box.Low),x+bw*.25,sy(box.Low),color);Line(scene,x-bw*.25,sy(box.High),x+bw*.25,sy(box.High),color);
-            Rect(scene,x-bw/2,sy(box.Q3),bw,sy(box.Q1)-sy(box.Q3),data.Dark?"#234B7A":"#D3E5FD",box.Label+" · Median: "+Plots.Short(box.Median)+" · Q1: "+Plots.Short(box.Q1)+" · Q3: "+Plots.Short(box.Q3),color);
+            Rect(scene,x-bw/2,sy(box.Q3),bw,sy(box.Q1)-sy(box.Q3),grouped?color:data.Dark?"#234B7A":"#D3E5FD",(grouped?box.Group+" · ":"")+box.Label+" · Median: "+Plots.Short(box.Median)+" · Q1: "+Plots.Short(box.Q1)+" · Q3: "+Plots.Short(box.Q3),color);
+            if(grouped)scene.Shapes.Last().Opacity=.3;
             Line(scene,x-bw/2,sy(box.Median),x+bw/2,sy(box.Median),color,2.5*scale);
-            foreach(double outlier in box.Outliers.Take(1000))Dot(scene,x,sy(outlier),2.5*scale,color,box.Label+" · Ausreißer: "+Plots.Short(outlier));
+            foreach(double outlier in box.Outliers.Take(1000))Dot(scene,x,sy(outlier),2.5*scale,color,(grouped?box.Group+" · ":"")+box.Label+" · Ausreißer: "+Plots.Short(outlier));
         }
         return scene;
     }
@@ -149,6 +184,8 @@ internal static class PlotDrawing
         foreach(var shape in scene.Shapes)
         {
             var pen=shape.Stroke=="none"?null:new Pen(Brush(shape.Stroke),shape.Weight);var fill=Brush(shape.Fill);
+            if(pen!=null && shape.Dash!=null)pen.DashStyle=new DashStyle(new[]{4.0,3.0},0);
+            if(shape.Opacity<1)dc.PushOpacity(shape.Opacity);
             if(shape.Type=="rect")dc.DrawRectangle(fill,pen,new Rect(shape.X,shape.Y,shape.W,shape.H));
             else if(shape.Type=="line")dc.DrawLine(pen,new Point(shape.X,shape.Y),new Point(shape.W,shape.H));
             else if(shape.Type=="circle")dc.DrawEllipse(fill,pen,new Point(shape.X,shape.Y),shape.Radius,shape.Radius);
@@ -162,14 +199,14 @@ internal static class PlotDrawing
                 double x=shape.X-(shape.Anchor=="middle"?text.Width/2:shape.Anchor=="end"?text.Width:0);
                 if(shape.Rotate!=0)dc.PushTransform(new RotateTransform(shape.Rotate,shape.X,shape.Y));dc.DrawText(text,new Point(x,shape.Y));if(shape.Rotate!=0)dc.Pop();
             }
+            if(shape.Opacity<1)dc.Pop();
         }
     }
     static string N(double value){return value.ToString("0.######",CultureInfo.InvariantCulture);}
     public static XDocument Svg(PlotScene scene,string notice)
     {
         XNamespace ns="http://www.w3.org/2000/svg";var root=new XElement(ns+"svg",new XAttribute("width",N(scene.Width)),new XAttribute("height",N(scene.Height)),new XAttribute("viewBox","0 0 "+N(scene.Width)+" "+N(scene.Height)),new XAttribute("role","img"));
-        var firstText=scene.Shapes.FirstOrDefault(x=>x.Type=="text");
-        root.Add(new XElement(ns+"title",firstText==null?"Diagramm":firstText.Text),new XElement(ns+"desc",notice??""));
+        root.Add(new XElement(ns+"title",scene.Title??"Diagramm"),new XElement(ns+"desc",notice??""));
         root.Add(new XElement(ns+"rect",new XAttribute("width","100%"),new XAttribute("height","100%"),new XAttribute("fill",scene.Background)));
         foreach(var shape in scene.Shapes)
         {
@@ -180,6 +217,8 @@ internal static class PlotDrawing
             else element.Add(new XAttribute("x",N(shape.X)),new XAttribute("y",N(shape.Y)));
             if(shape.Type=="rect")element.Add(new XAttribute("width",N(shape.W)),new XAttribute("height",N(shape.H)));
             element.Add(new XAttribute("fill",shape.Fill),new XAttribute("stroke",shape.Stroke),new XAttribute("stroke-width",N(shape.Weight)));
+            if(shape.Dash!=null)element.Add(new XAttribute("stroke-dasharray",N(4*shape.Weight)+" "+N(3*shape.Weight)));
+            if(shape.Opacity<1)element.Add(new XAttribute("opacity",N(shape.Opacity)));
             if(shape.Type=="text")
             {
                 element.Add(new XAttribute("font-family","Segoe UI, Arial, sans-serif"),new XAttribute("font-size",N(shape.Size)),new XAttribute("text-anchor",shape.Anchor),new XAttribute("dominant-baseline","text-before-edge"));

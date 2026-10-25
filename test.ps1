@@ -5,7 +5,7 @@ $output=Join-Path $PSScriptRoot $OutputDirectory
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $framework = Split-Path $compiler
 $themeSource=Join-Path $PSScriptRoot 'src\Theme.cs'
-$plotSources=@('src/PlotData.cs','src/PlotDrawing.cs','src/PlotPanel.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
+$plotSources=@('src/PlotData.cs','src/PlotGrouping.cs','src/PlotDrawing.cs','src/PlotPanel.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
 $references = @('System.dll','System.Core.dll','System.Data.dll','System.Net.Http.dll','System.Web.Extensions.dll','System.Xaml.dll','System.Xml.dll','System.Xml.Linq.dll','System.IO.Compression.dll','System.IO.Compression.FileSystem.dll') | ForEach-Object { '/reference:' + (Join-Path $framework $_) }
 $references += @('PresentationFramework.dll','PresentationCore.dll','WindowsBase.dll') | ForEach-Object { '/reference:' + (Join-Path (Join-Path $framework 'WPF') $_) }
 if (!$DocumentsOnly -and !$ViewsOnly) {

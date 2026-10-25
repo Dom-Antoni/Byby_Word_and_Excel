@@ -4,6 +4,7 @@ dist-latest/
 dist-release/
 dist-table/
 dist-plots/
+dist-groups/
 .downloads/
 vendor/
 *.user

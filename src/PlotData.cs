@@ -20,28 +20,33 @@ internal sealed class PlotOptions
 {
     public PlotKind Kind=PlotKind.Columns;
     public PlotAggregate Aggregate=PlotAggregate.Sum;
-    public int X=-1,Y=-1,Y2=-1,Bins=0,Limit=20;
+    public int X=-1,Y=-1,Y2=-1,Group=-1,GroupLimit=12,Bins=0,Limit=20;
     public bool SelectedOnly,SortValue,Dark,Zero;
     public string Title="",XLabel="",YLabel="",Numbers="Auto";
     public PlotOptions Copy(){return (PlotOptions)MemberwiseClone();}
 }
 internal sealed class PlotColumn {public int Index,Numeric,Dates,Text,Missing;public string Name;public bool IsNumber {get{return Numeric>0 && Numeric>=0.65*(Numeric+Dates+Text);}}public bool IsDate {get{return Dates>0 && Dates>=0.65*(Numeric+Dates+Text);}}}
 internal sealed class PlotSuggestion {public string Label,Reason;public PlotOptions Options;}
-internal sealed class PlotPoint {public double X,Y;public string Label;}
-internal sealed class PlotSeries {public string Name;public List<PlotPoint> Points=new List<PlotPoint>();}
-internal sealed class PlotBox {public string Label;public double Low,Q1,Median,Q3,High;public List<double> Outliers=new List<double>();}
+internal sealed class PlotPoint {public double X,Y;public string Label;public int Row;}
+internal sealed class PlotSeries {public string Name,Group;public int ColorIndex=-1,MeasureIndex;public List<PlotPoint> Points=new List<PlotPoint>();}
+internal sealed class PlotBox {public string Label,Group;public int CategoryIndex,GroupSlot,ColorIndex=-1;public double Low,Q1,Median,Q3,High;public List<double> Outliers=new List<double>();}
+internal sealed class PlotGroup {public string Name;public int ColorIndex;}
 internal sealed class PlotData
 {
     public PlotKind Kind;
     public string Title,XLabel,YLabel,Notice;
     public bool NumericX,DateX,Dark,Zero;
     public double BinWidth;
+    public int UsedRows;
+    public string GroupLabel;
+    public List<PlotGroup> Groups=new List<PlotGroup>();
+    public List<string> Measures=new List<string>();
     public List<string> Categories=new List<string>();
     public List<PlotSeries> Series=new List<PlotSeries>();
     public List<PlotBox> Boxes=new List<PlotBox>();
 }
 
-internal static class Plots
+internal static partial class Plots
 {
     public static readonly string[] KindNames={"Säulen","Balken","Linie","Punktdiagramm","Histogramm","Boxplot"};
     public static bool Number(string input,string mode,out double value)
@@ -115,6 +120,7 @@ internal static class Plots
     sealed class Sample {public int Row;public string Label;public double X;public double?[] Y;}
     public static PlotData Build(PlotSource source,PlotOptions options)
     {
+        if(options.Group>=0)return Grouped(source,options);
         if(options.Y>=source.Cells.GetLength(1) || options.Y2>=source.Cells.GetLength(1) || options.X>=source.Cells.GetLength(1))throw new FormatException("Die gewählte Spalte ist in diesem Blatt nicht vorhanden.");
         bool histogram=options.Kind==PlotKind.Histogram,box=options.Kind==PlotKind.Box;
         if((histogram || box || options.Kind==PlotKind.Scatter || options.Kind==PlotKind.Line) && options.Y<0)throw new FormatException("Bitte eine Zahlenspalte als Y-Achse wählen.");
@@ -176,7 +182,7 @@ internal static class Plots
             for(int n=0;n<ys.Count;n++)
             {
                 var series=new PlotSeries {Name=ys[n]<0?"Anzahl":source.Column(ys[n])};
-                for(int g=0;g<shown.Count;g++){double? value=Aggregate(shown[g],n,options.Aggregate);if(value.HasValue)series.Points.Add(new PlotPoint {X=g,Y=value.Value,Label=shown[g][0].Label});}result.Series.Add(series);
+                for(int g=0;g<shown.Count;g++){double? value=Aggregate(shown[g],n,options.Aggregate);if(value.HasValue)series.Points.Add(new PlotPoint {X=g,Y=value.Value,Label=shown[g][0].Label,Row=shown[g][0].Row});}result.Series.Add(series);
             }
             result.NumericX=false;result.DateX=false;result.Title=yName+" nach "+result.XLabel;
             if(options.Aggregate!=PlotAggregate.Rows)result.YLabel=(options.Aggregate==PlotAggregate.Sum?"Summe":options.Aggregate==PlotAggregate.Mean?"Mittelwert":"Anzahl")+(options.Aggregate==PlotAggregate.Count?"":" · "+yName);
@@ -189,7 +195,7 @@ internal static class Plots
             int cap=options.Kind==PlotKind.Scatter?5000:2000;
             for(int n=0;n<ys.Count;n++)
             {
-                var series=new PlotSeries {Name=source.Column(ys[n])};for(int i=0;i<samples.Count;i++)if(samples[i].Y[n].HasValue)series.Points.Add(new PlotPoint {X=result.NumericX?samples[i].X:i,Y=samples[i].Y[n].Value,Label=samples[i].Label});
+                var series=new PlotSeries {Name=source.Column(ys[n])};for(int i=0;i<samples.Count;i++)if(samples[i].Y[n].HasValue)series.Points.Add(new PlotPoint {X=result.NumericX?samples[i].X:i,Y=samples[i].Y[n].Value,Label=samples[i].Label,Row=samples[i].Row});
                 if(series.Points.Count>cap){var all=series.Points;series.Points=Enumerable.Range(0,cap).Select(i=>all[(int)((long)i*(all.Count-1)/(cap-1))]).ToList();result.Notice="Für die Darstellung und den Export werden bis zu "+cap+" Punkte je Reihe gleichmäßig ausgewählt. ";}result.Series.Add(series);
             }result.Title=yName+" nach "+result.XLabel;
         }
@@ -199,6 +205,7 @@ internal static class Plots
         if(!string.IsNullOrWhiteSpace(options.YLabel))result.YLabel=options.YLabel.Trim();
         result.Notice=(result.Notice??"")+samples.Count+" von "+total+" Zeilen verwendet"+(skipped>0?"; "+skipped+" leer/ungültig übersprungen":"")+".";
         if(ys.Count>1)result.Notice+=" Beide Reihen teilen dieselbe Y-Skala; fehlende Werte werden je Reihe ausgelassen.";
+        result.UsedRows=samples.Count;
         return result;
     }
     static double? Aggregate(List<Sample> samples,int series,PlotAggregate mode)

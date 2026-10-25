@@ -45,6 +45,9 @@ internal static class Theme
     {
         string[,] colors=dark?new[,]{{"App.Background","#181C22"},{"App.Panel","#232932"},{"App.Control","#303844"},{"App.Text","#E8ECF2"},{"App.Muted","#B0BAC9"},{"App.Border","#536072"},{"App.Hover","#424F61"},{"App.Selected","#344E71"},{"App.Accent","#9BC8FF"},{"App.Error","#FFACAD"}}:new[,]{{"App.Background","#E8EBF0"},{"App.Panel","#F8F9FB"},{"App.Control","#FFFFFF"},{"App.Text","#203040"},{"App.Muted","#536174"},{"App.Border","#A9B4C3"},{"App.Hover","#E1EAF6"},{"App.Selected","#C9DDF7"},{"App.Accent","#184A86"},{"App.Error","#A12734"}};
         for(int i=0;i<colors.GetLength(0);i++)resources[colors[i,0]]=new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString(colors[i,1]));
+        string[] roleColors=dark?new[]{"#24496E","#205247","#624821","#503866","#665018"}:new[]{"#D8EAFF","#D9F1E7","#FFEDD1","#ECE0FA","#FFF0B3"};
+        string[] roleNames={"Plot.RoleX","Plot.RoleY","Plot.RoleY2","Plot.RoleGroup","Plot.Pick"};
+        for(int i=0;i<roleNames.Length;i++)resources[roleNames[i]]=new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString(roleColors[i]));
         resources[SystemColors.WindowBrushKey]=resources["App.Control"];resources[SystemColors.WindowTextBrushKey]=resources["App.Text"];resources[SystemColors.ControlBrushKey]=resources["App.Panel"];resources[SystemColors.ControlTextBrushKey]=resources["App.Text"];resources[SystemColors.MenuBrushKey]=resources["App.Control"];resources[SystemColors.MenuTextBrushKey]=resources["App.Text"];resources[SystemColors.HighlightBrushKey]=resources["App.Selected"];resources[SystemColors.HighlightTextBrushKey]=resources["App.Text"];
         ((SolidColorBrush)Ui.Ink).Color=((SolidColorBrush)resources["App.Text"]).Color;((SolidColorBrush)Ui.Paper).Color=((SolidColorBrush)resources["App.Panel"]).Color;
     }

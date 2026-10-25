@@ -155,7 +155,7 @@ internal sealed class Tabelle : Window
         ConfigureGrid();
         workspace.Margin=new Thickness(16,0,16,0);workspace.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(1,GridUnitType.Star),MinWidth=250});workspace.ColumnDefinitions.Add(new ColumnDefinition {Width=GridLength.Auto});workspace.ColumnDefinitions.Add(plotColumn);
         var frame=new Border {BorderThickness=new Thickness(1),Child=grid};Theme.Bind(frame,Border.BorderBrushProperty,"App.Border");workspace.Children.Add(frame);
-        plots=new PlotPanel(PlotInput) {Visibility=Visibility.Collapsed};plots.CloseRequested+=delegate{SetPlotsVisible(false);};Grid.SetColumn(plots,2);workspace.Children.Add(plots);Grid.SetColumn(plotSplitter,1);workspace.Children.Add(plotSplitter);root.Children.Add(workspace);
+        plots=new PlotPanel(PlotInput) {Visibility=Visibility.Collapsed};plots.CloseRequested+=delegate{SetPlotsVisible(false);};plots.RolesChanged+=UpdatePlotHeaders;Grid.SetColumn(plots,2);workspace.Children.Add(plots);Grid.SetColumn(plotSplitter,1);workspace.Children.Add(plotSplitter);root.Children.Add(workspace);
         appearanceChanged=delegate{foreach(var item in themeItems)item.IsChecked=(string)item.Tag==Theme.Current.Mode;};
         Theme.Changed+=appearanceChanged;
         CommandBindings.Add(new System.Windows.Input.CommandBinding(System.Windows.Input.ApplicationCommands.Open,delegate{Open();}));
@@ -231,10 +231,44 @@ internal sealed class Tabelle : Window
         return new PlotSource {Identity=Active,Name=Active.Name,Cells=Cells,Headings=headings,SelectedRows=selected};
     }
     void PlotAxis(int column,int axis){SetPlotsVisible(true);plots.Assign(column,axis);}
-    Style PlotHeader(int column)
+    string HeaderTitle(int column)
     {
-        var menu=new ContextMenu();Item(menu,"Als X-Achse verwenden",delegate{PlotAxis(column,0);});Item(menu,"Als Y-Achse verwenden",delegate{PlotAxis(column,1);});Item(menu,"Als zweite Y-Reihe verwenden",delegate{PlotAxis(column,2);});menu.Items.Add(new Separator());Item(menu,"Plot erstellen",delegate{SetPlotsVisible(true);});
-        var style=new Style(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader),(Style)grid.FindResource(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader)));style.Setters.Add(new Setter(FrameworkElement.ContextMenuProperty,menu));return style;
+        var roles=plots==null?null:plots.RolesFor(Active);var labels=new List<string>();
+        if(roles!=null){if(roles.X==column)labels.Add("X");if(roles.Y==column)labels.Add("Y1");if(roles.Y2==column)labels.Add("Y2");if(roles.Group==column)labels.Add("Gruppe");}
+        string name=headings?(Cells[0,column]??"").Replace("\r"," ").Replace("\n"," "):"";
+        return Sheet.Column(column)+(labels.Count==0?"":" · "+string.Join(" / ",labels))+(name==""?"":"\n"+name);
+    }
+    void UpdatePlotHeaders()
+    {
+        if(rendering || workbook==null)return;
+        for(int c=0;c<grid.Columns.Count;c++)
+        {
+            var old=grid.Columns[c].HeaderStyle;var context=old==null?null:old.Setters.OfType<Setter>().Where(s=>s.Property==FrameworkElement.ContextMenuProperty).Select(s=>s.Value as ContextMenu).FirstOrDefault();
+            grid.Columns[c].Header=HeaderTitle(c);grid.Columns[c].HeaderStyle=PlotHeader(c,context);
+        }
+    }
+    Style PlotHeader(int column,ContextMenu existing=null)
+    {
+        var menu=existing;
+        if(menu==null)
+        {
+            menu=new ContextMenu();Item(menu,"Als X-Achse verwenden",delegate{PlotAxis(column,0);});Item(menu,"Als Y-Achse verwenden",delegate{PlotAxis(column,1);});Item(menu,"Als zweite Y-Reihe verwenden",delegate{PlotAxis(column,2);});Item(menu,"Als Gruppierungsvariable / Farbe verwenden",delegate{PlotAxis(column,3);});menu.Items.Add(new Separator());Item(menu,"Plot erstellen",delegate{SetPlotsVisible(true);});
+            var popup=menu;
+            popup.Opened+=delegate
+            {
+                var header=popup.PlacementTarget as System.Windows.Controls.Primitives.DataGridColumnHeader;if(header==null)return;
+                header.SetResourceReference(Control.BackgroundProperty,"Plot.Pick");header.SetResourceReference(Control.BorderBrushProperty,"App.Accent");header.BorderThickness=new Thickness(2);
+            };
+            popup.Closed+=delegate
+            {
+                var header=popup.PlacementTarget as System.Windows.Controls.Primitives.DataGridColumnHeader;if(header==null)return;
+                header.ClearValue(Control.BackgroundProperty);header.ClearValue(Control.BorderBrushProperty);header.ClearValue(Control.BorderThicknessProperty);
+            };
+        }
+        var style=new Style(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader),(Style)grid.FindResource(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader)));style.Setters.Add(new Setter(FrameworkElement.ContextMenuProperty,menu));
+        var roles=plots==null?null:plots.RolesFor(Active);string key=roles==null?null:roles.Group==column?"Plot.RoleGroup":roles.X==column?"Plot.RoleX":roles.Y==column?"Plot.RoleY":roles.Y2==column?"Plot.RoleY2":null;
+        if(key!=null){style.Setters.Add(new Setter(Control.BackgroundProperty,new DynamicResourceExtension(key)));style.Setters.Add(new Setter(Control.BorderThicknessProperty,new Thickness(1,2,1,2)));style.Setters.Add(new Setter(Control.BorderBrushProperty,new DynamicResourceExtension("App.Accent")));}
+        return style;
     }
     void SetBook(SheetImport imported,string fileName,bool viewing)
     {
@@ -278,8 +312,7 @@ internal sealed class Tabelle : Window
             table=new DataTable();grid.Columns.Clear();
             for(int c=0;c<Cells.GetLength(1);c++)
             {
-                table.Columns.Add("C"+c,typeof(string));string name=headings?(Cells[0,c]??"").Replace("\r"," ").Replace("\n"," "):"";
-                string title=Sheet.Column(c)+(name==""?"":"\n"+name);
+                table.Columns.Add("C"+c,typeof(string));string title=HeaderTitle(c);
                 var display=new Style(typeof(TextBlock));display.Setters.Add(new Setter(FrameworkElement.MarginProperty,new Thickness(12,8,12,8)));display.Setters.Add(new Setter(TextBlock.TextWrappingProperty,wrap?TextWrapping.Wrap:TextWrapping.NoWrap));display.Setters.Add(new Setter(TextBlock.TextTrimmingProperty,TextTrimming.CharacterEllipsis));display.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center));
                 grid.Columns.Add(new DataGridTextColumn {Header=title,HeaderStyle=PlotHeader(c),Binding=new System.Windows.Data.Binding("C"+c),ElementStyle=display,MinWidth=100,MaxWidth=900,Width=new DataGridLength(160)});
             }
