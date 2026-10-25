@@ -37,19 +37,20 @@ Die App verwendet regelbasierte lokale Sprachprüfung und Wörterbücher. Freie 
 
 ## Tabelle
 
-- CSV/TSV öffnen, bearbeiten und speichern. Vor CSV-Import das passende Trennzeichen wählen; Semikolon ist voreingestellt. UTF-8 ist das vorgesehene Textformat.
-- XLSX-Blätter als Zellwerte importieren und auswählen. Gespeicherte Formelergebnisse werden gelesen; fehlende Ergebnisse werden mit `#KEIN_CACHE!` markiert. Keine Neuberechnung beliebiger Excel-Formeln, kein XLSX-Rückexport. Datum/Zeit und Formatierungen werden noch nicht interpretiert, Datumswerte können als Seriennummer erscheinen.
-- XLSX-Import verändert die Originaldatei nicht. Speichern exportiert das aktuelle Blatt als CSV oder TSV; andere Blätter und Excel-Funktionen werden nicht exportiert.
+- Leseansicht mit größeren Zellen, abwechselnden Zeilenfarben, festen Spaltennamen und deutlichen Zeilennummern. Menüs für Datei, Bearbeiten, Ansicht und Daten sowie Blattreiter, Suche, Zoom und Hell-/Dunkelmodus.
+- CSV/TSV/TXT öffnen: Semikolon, Komma oder Tabulator werden automatisch erkannt. Zitate, mehrzeilige Felder, Excel-sep-Angaben und gängige Textkodierungen werden berücksichtigt; die Trennzeichenwahl lässt sich korrigieren.
+- XLSX/XLSM/XLTX/XLTM, ODS/FODS, Excel-XML und einfache HTML-Tabellen als Zellwerte importieren. Mehrere Blätter und gängige Excel-Datumsformate werden unterstützt. Gespeicherte Formelergebnisse werden gelesen; fehlende Ergebnisse sind markiert. Keine Neuberechnung beliebiger Excel-Formeln.
+- Der Import verändert Excel-/ODS-/HTML-Originale nicht. Speichern exportiert das aktuelle Blatt als CSV oder TSV; andere Blätter und Formatierungen werden nicht exportiert. [Bedienung und unterstützte Formate](docs/TABELLE.md).
 - Zellen bearbeiten, zusätzliche Zeilen und Spalten hinzufügen, zwischen Eingaben und berechneten Ergebnissen wechseln.
 - Eigene Formeln: `=A1+B1*2`, `=(A1+3)/2`, `=SUMME(A1:A10)`, `=MITTELWERT(A1:A10)`, `=MIN(A1:A10)`, `=MAX(A1:A10)`. Die englischen Namen SUM und AVERAGE funktionieren ebenfalls. Funktionen akzeptieren in dieser Version genau eine Zelle oder einen rechteckigen Bereich.
 - Dezimalpunkt und Dezimalkomma, Zellbezüge, Klammern, Fehlerhinweise bei Zirkelbezügen und Division durch null.
 - CSV speichert die eingegebenen Formeln, nicht deren Ergebnisse. Leere Randzeilen und Randspalten werden beim Export entfernt. Zahlen mit Tausendertrennzeichen werden nicht unterstützt.
 
-Nicht unterstützt: alte DOC/XLS-Binärdateien, Makros, Diagramme, komplexe Excel-Funktionen, Formatierungstreue und große Datenanalysen. Der XLSX-Import ist auf 10.000 Zeilen und 512 Spalten begrenzt; große Tabellen sind noch nicht auf Leistung getestet. Mehrzellen-Einfügen und ein eigener Arbeitsmappen-Speichertyp fehlen noch.
+Nicht unterstützt: alte DOC/XLS-Binärdateien, XLSB, Makros, Diagramme, komplexe Excel-Funktionen, Formatierungstreue und große Datenanalysen. Tabellenimporte sind auf 10.000 Zeilen und 512 Spalten pro Blatt begrenzt. Die Anzeige verwendet virtuelle Zeilen und Spalten; repräsentative eigene Alltagsdateien müssen weiterhin ausprobiert werden. Mehrzellen-Einfügen und ein eigener Arbeitsmappen-Speichertyp fehlen noch.
 
 ## Qualität und Entwicklung
 
-`test.ps1` baut beide Programme und prüft CSV, Formeln, atomaren Dateiersatz, Dokumentimporte, Quellenverwaltung sowie die Schreibregeln und Parser. Auch Zeichensätze, Hell-/Dunkeldarstellung und der Erhalt von Formatierung und Rückgängig beim Darstellungswechsel werden geprüft. `test.ps1 -Integration` prüft zusätzlich echte deutsche und englische LanguageTool-Korrekturen, UTF-16-Positionen nach Emoji, Abbruch und die realen Synonymdaten. Am 25.10.2026 haben alle 179 Prüfungen dieses vollständigen lokalen Durchlaufs bestanden. Die Tests ersetzen keine umfassende Prüfung mit eigenen Alltagstexten.
+`test.ps1` baut beide Programme und prüft CSV, Formeln, atomaren Dateiersatz, Dokumentimporte, Quellenverwaltung sowie die Schreibregeln und Parser. Auch Zeichensätze, Hell-/Dunkeldarstellung und der Erhalt von Formatierung und Rückgängig beim Darstellungswechsel werden geprüft. `test.ps1 -Integration` prüft zusätzlich echte deutsche und englische LanguageTool-Korrekturen, UTF-16-Positionen nach Emoji, Abbruch und die realen Synonymdaten. Am 25.10.2026 haben alle 228 Prüfungen bestanden: 25 Basis-, 49 Tabellen-, 43 Schreib-, 61 Dokument-, 29 Bibliotheks- und 21 Ansichtsprüfungen. Nach einem Zeitlimit beim ersten Grammatiktest war dessen Wiederholung erfolgreich. Die Tests ersetzen keine umfassende Prüfung mit eigenen Alltagstexten.
 
 Quellcode: `src/Schreib.cs`, `src/WritingPanel.cs`, `src/Writing.cs`, `src/Grammar.cs`, `src/Synonyms.cs`, `src/WritingSettingsWindow.cs`, `src/Tabelle.cs`, `src/Formats.cs`, `src/Common.cs`. Beide Programme verwenden native WPF-Oberflächen. Der Grammatikclient verwendet nur eine lokale Adresse, ohne Proxy oder Weiterleitungen. Es werden keine Makros oder Formeln als Programmcode ausgeführt. Grammatikprüfungen laufen asynchron; veraltete Ergebnisse werden verworfen. Beim normalen Beenden wird der zugehörige LanguageTool-Prozess gestoppt.
 

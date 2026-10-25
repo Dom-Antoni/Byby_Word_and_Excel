@@ -35,31 +35,7 @@ internal static class DocumentFiles
         var doc=Empty();foreach(string line in text.Replace("\r\n","\n").Replace('\r','\n').Split('\n'))doc.Blocks.Add(new Paragraph(new Run(line)) {Margin=new Thickness(0)});
         return new DocumentImport {Document=doc,Note="Textdatei · Speicherung als UTF-8"};
     }
-    public static string ReadText(string path,bool html=false)
-    {
-        if(new FileInfo(path).Length>30000000)throw new FormatException("Diese Textdatei ist für die aktuelle Version zu groß (maximal 30 MB).");
-        var bytes=File.ReadAllBytes(path);Encoding encoding=null;int skip=0;
-        if(bytes.Length>=4 && bytes[0]==0xff && bytes[1]==0xfe && bytes[2]==0 && bytes[3]==0){encoding=Encoding.UTF32;skip=4;}
-        else if(bytes.Length>=4 && bytes[0]==0 && bytes[1]==0 && bytes[2]==0xfe && bytes[3]==0xff){encoding=new UTF32Encoding(true,true);skip=4;}
-        else if(bytes.Length>=3 && bytes[0]==0xef && bytes[1]==0xbb && bytes[2]==0xbf){encoding=Encoding.UTF8;skip=3;}
-        else if(bytes.Length>=2 && bytes[0]==0xff && bytes[1]==0xfe){encoding=Encoding.Unicode;skip=2;}
-        else if(bytes.Length>=2 && bytes[0]==0xfe && bytes[1]==0xff){encoding=Encoding.BigEndianUnicode;skip=2;}
-        if(encoding==null && html)
-        {
-            string head=Encoding.ASCII.GetString(bytes,0,Math.Min(bytes.Length,8192));var charset=Regex.Match(head,"charset\\s*=\\s*['\"\\s]*([a-zA-Z0-9_-]+)",RegexOptions.IgnoreCase);
-            if(charset.Success)try{encoding=Encoding.GetEncoding(charset.Groups[1].Value);}catch(ArgumentException){}
-        }
-        if(encoding==null && bytes.Length>=8)
-        {
-            int sample=Math.Min(bytes.Length,2048),odd=0,even=0;for(int i=0;i<sample;i++)if(bytes[i]==0){if(i%2==0)even++;else odd++;}
-            if(odd>sample/4 && even<sample/20)encoding=Encoding.Unicode;else if(even>sample/4 && odd<sample/20)encoding=Encoding.BigEndianUnicode;
-        }
-        string text;
-        if(encoding!=null)text=encoding.GetString(bytes,skip,bytes.Length-skip);
-        else try{text=new UTF8Encoding(false,true).GetString(bytes);}catch(DecoderFallbackException){text=Encoding.GetEncoding(1252).GetString(bytes);}
-        if(text.Any(c=>c=='\0') || text.Count(c=>char.IsControl(c) && c!='\r' && c!='\n' && c!='\t' && c!='\f')>Math.Max(2,text.Length/50))throw new FormatException("Die Datei enthält binäre Daten und kann nicht als Text geöffnet werden.");
-        return text;
-    }
+    public static string ReadText(string path,bool html=false){return Formats.ReadText(path,html);}
     static XDocument Xml(ZipArchive zip,string name)
     {
         var entry=zip.GetEntry(name);if(entry==null)throw new FormatException("Dokumentbestandteil fehlt: "+name);if(entry.Length>30000000)throw new FormatException("Dokumentbestandteil zu groß.");

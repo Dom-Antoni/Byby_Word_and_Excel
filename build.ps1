@@ -10,6 +10,7 @@ $references += @('PresentationFramework.dll', 'PresentationCore.dll', 'WindowsBa
 foreach ($app in @('Schreib', 'Tabelle')) {
     $sources = @((Join-Path $PSScriptRoot 'src\Common.cs'), (Join-Path $PSScriptRoot 'src\Theme.cs'), (Join-Path $PSScriptRoot 'src\Formats.cs'), (Join-Path $PSScriptRoot ('src\' + $app + '.cs')))
     if ($app -eq 'Schreib') { $sources += @('Writing.cs','Grammar.cs','Synonyms.cs','WritingPanel.cs','WritingSettingsWindow.cs','DocumentEditor.cs','DocumentFiles.cs','References.cs','ReferencePanel.cs','Completion.cs','ReferenceStore.cs','ReferenceLookup.cs','ReferencePickerWindow.cs') | ForEach-Object { Join-Path $PSScriptRoot ('src\' + $_) } }
+    if ($app -eq 'Tabelle') { $sources += Join-Path $PSScriptRoot 'src\SheetFiles.cs' }
     & $compiler /nologo /target:winexe /platform:anycpu /optimize+ ('/out:' + (Join-Path $output ($app + '.exe'))) $references $sources
     if ($LASTEXITCODE -ne 0) { throw "Build fehlgeschlagen: $app" }
 }

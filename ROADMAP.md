@@ -24,7 +24,7 @@ Außerdem umgesetzt: formatierter Dokumenteditor, Tab-Vervollständigung, anklic
 
 ## Tabellen ausbauen
 
-- Datums-/Zahlenformate beim XLSX-Lesen unterstützen und große Tabellen effizient anzeigen.
+- Umgesetzt: übersichtliche Leseansicht mit festen Spaltennamen und virtuellen Zeilen/Spalten, automatische Text-Trennzeichen, ODS-/HTML-/Excel-XML-Import sowie gängige Excel-Datumsformate. Weitere Zahlenformate und repräsentative Alltagsdateien prüfen.
 - Eigene Arbeitsmappen mit mehreren Blättern und Formeln verlustfrei speichern; klarer Export zu CSV und XLSX.
 - Kopieren/Einfügen rechteckiger Bereiche, Rückgängig/Wiederholen, Sortieren, Filtern, Suchen und Spaltenbreiten.
 - Nur die im Alltag benötigten zusätzlichen Formeln ergänzen.
