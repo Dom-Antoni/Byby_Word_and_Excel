@@ -14,22 +14,22 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare offline language components
+        shell: pwsh
+        run: ./setup-offline.ps1
       - name: Build and test
         shell: pwsh
-        run: ./test.ps1
+        run: ./test.ps1 -Integration
       - name: Package apps
         shell: pwsh
-        run: Compress-Archive -Path dist/Schreib.exe, dist/Tabelle.exe, README.md, LICENSE -DestinationPath dist/Byby_Word_and_Excel.zip
+        run: ./package.ps1
       - uses: actions/upload-artifact@v4
         with:
-          name: Byby_Word_and_Excel-Windows
-          path: |
-            dist/Schreib.exe
-            dist/Tabelle.exe
-            dist/Byby_Word_and_Excel.zip
+          name: Byby_Word_and_Excel-Windows-x64-offline
+          path: dist/Byby_Word_and_Excel-Windows-x64-offline.zip
       - name: Publish tagged release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
-        run: gh release create "$env:GITHUB_REF_NAME" dist/Schreib.exe dist/Tabelle.exe dist/Byby_Word_and_Excel.zip --generate-notes
+        run: gh release create "$env:GITHUB_REF_NAME" dist/Byby_Word_and_Excel-Windows-x64-offline.zip --generate-notes

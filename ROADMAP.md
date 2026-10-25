@@ -4,6 +4,8 @@ Ziel sind zwei eigenständige lokale Windows-Anwendungen für den tatsächlichen
 
 ## Vor einer ersten Veröffentlichung
 
+Bereits eingebaut: lokales LanguageTool für Deutsch/Englisch, eigene Stilregeln, einstellbare Wiederholungen, lokale Synonyme beider Sprachen, eigene Wörter, bevorzugte Schreibweisen und deaktivierbare Regeln. Sprachmodelle und YAML-Regelpakete bleiben für später.
+
 - Beide Oberflächen auf dem Zielrechner prüfen: Öffnen, Schreiben, Speichern, Abbrechen, Schließen und Wiedereinlesen.
 - Deutsche und englische Wörterbücher, Vorschläge und Sprachumschaltung mit realistischen Texten testen.
 - Tabellenbearbeitung samt Formelzeile und Blattwechsel prüfen; Mehrzellen-Einfügen ergänzen.
@@ -12,8 +14,9 @@ Ziel sind zwei eigenständige lokale Windows-Anwendungen für den tatsächlichen
 
 ## Schreiben ausbauen
 
-- Lokale Grammatikprüfung für Deutsch und Englisch samt offline mitgelieferten Abhängigkeiten und Lizenzprüfung evaluieren, beispielsweise LanguageTool.
-- Verständliche Vorschläge direkt am Text, eigene Wörterbücher, ignorierbare Regeln und einstellbarer Wiederholungsabstand.
+- Die integrierte lokale Grammatikprüfung mit repräsentativen Alltagstexten vergleichen: Fehlalarme, übersehene Fehler und Geschwindigkeit.
+- Direkte Unterstreichungen im Editor ergänzen; derzeit markieren anklickbare Hinweise die Textstelle. Morphologische Wiederholungserkennung und Erkennung komplexer Satzstrukturen verbessern.
+- Sprachmodelle erst nach praktischer Nutzung evaluieren: optionale Umformulierungen mit ausdrücklicher Übernahme, keine stillen Textänderungen.
 - Wiederherstellung nach Absturz, Suchen/Ersetzen, Zoom und zuletzt geöffnete Dateien.
 - Einfachen DOCX-Export und zuverlässigeren Textimport ergänzen, ohne Anspruch auf Word-Layouttreue.
 

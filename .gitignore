@@ -1,4 +1,6 @@
 dist/
+.downloads/
+vendor/
 *.user
 *.suo
 *.tmp

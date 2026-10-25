@@ -2,23 +2,28 @@
 
 Zwei kleine, getrennte Windows-Desktop-Apps, um alltägliches Schreiben und einfache Tabellenarbeit ohne Microsoft Office und ohne Abonnement zu erledigen.
 
-**Stand: erste Grundversion, noch kein vollständiger Office-Ersatz.** Die höchste Priorität ist ein zuverlässiger Umgang mit eigenen Texten und Tabellen. Kein Konto, keine Cloud, keine Telemetrie und keine Netzwerkanfragen im Anwendungscode. GitHub wird nur für Entwicklung und Downloads verwendet.
+**Stand: Schreibassistenz mit lokaler Grammatik- und Stilprüfung; noch kein vollständiger Office-Ersatz.** Der Schwerpunkt liegt auf Schreiben und Sprachkorrektur für Deutsch und Englisch. Tabellen bleiben auf Ansicht, Bearbeitung und einfache Rechnungen begrenzt. Kein Konto, keine Cloud und keine Telemetrie. Die Grammatikprüfung kommuniziert ausschließlich mit einem mitgelieferten Prozess auf `127.0.0.1`; kein Text wird ins Internet geschickt. GitHub wird für Entwicklung und Downloads verwendet.
 
 ## Starten
 
-Unter Windows `build.ps1` in PowerShell ausführen. Anschließend `dist/Schreib.exe` oder `dist/Tabelle.exe` doppelklicken. Benötigt wird das Windows .NET Framework mit WPF; kein Office, kein .NET SDK und keine zusätzlichen NuGet-Pakete. Die Programme werden mit dem vorhandenen Framework-Compiler gebaut. Auf diesem Entwicklungsrechner erfolgreich gebaut; die Oberflächenprüfung steht noch aus.
+Für die Entwicklung unter Windows x64 zunächst `setup-offline.ps1`, danach `build.ps1` mit PowerShell 7 ausführen. Der erste Schritt lädt die Sprachkomponenten einmalig herunter. Anschließend `dist/Schreib.exe` oder `dist/Tabelle.exe` doppelklicken. Benötigt wird das Windows .NET Framework mit WPF; kein Office und kein .NET SDK. Eine portable Java-Laufzeit für LanguageTool wird im App-Ordner mitgeliefert, ohne Systeminstallation.
 
-Die EXE-Dateien sind portabel. Derzeit sind sie unsigniert. Es gibt noch keinen veröffentlichten Download und keinen Installer.
+`package.ps1` erstellt `dist/Byby_Word_and_Excel-Windows-x64-offline.zip`. Zum Weitergeben immer dieses vollständige Paket verwenden, vollständig entpacken und `Schreib.exe` starten. Die Ordner `runtime`, `languagetool` und `synonyms` müssen neben der EXE bleiben. Nach dem Download läuft die App ohne Internet. Die Programme sind unsigniert; ein Installer und ein als stabil freigegebener Release fehlen noch.
 
 ## Schreib
 
 - Texte schreiben und lesen, TXT und Markdown in UTF-8 speichern.
 - DOCX als reinen Text importieren. Die Originaldatei wird dabei nicht überschrieben. Bilder, Layout, Kommentare, Kopf-/Fußzeilen und komplexe Inhalte werden nicht übernommen.
-- Lokale WPF-Rechtschreibprüfung mit Deutsch, britischem oder amerikanischem Englisch; Korrekturvorschläge über das Kontextmenü. Wörterbuchverfügbarkeit und Qualität müssen auf dem Zielrechner praktisch geprüft werden.
-- Hinweise auf gleiche Wörter innerhalb von sieben Wortpositionen; ein Klick markiert die betreffende Stelle. Auch häufige Funktionswörter werden derzeit angezeigt.
-- Wörter- und Zeichenzähler, Strg+S, Speicherrückfrage beim Schließen oder Wechseln.
+- Lokale Rechtschreib-, Grammatik- und Zeichensetzungsprüfung durch LanguageTool 6.6, mit Deutsch, britischem oder amerikanischem Englisch. „Prüfen“ startet eine Prüfung sofort; nach Textänderungen wird automatisch geprüft.
+- Kategorisierte Hinweise mit Erklärung: Stelle auswählen, markierten Text prüfen, einen angebotenen Vorschlag übernehmen, Fundstelle ignorieren oder Regel abschalten. Ohne passende Ersatzformulierung bleibt der Hinweis eine Hilfestellung zum eigenen Überarbeiten.
+- Wiederholungen mit einstellbarem Abstand; häufige Funktionswörter werden normalerweise ausgelassen, direkt doppelte Wörter bleiben sichtbar. Heuristische Wortstämme und einige unregelmäßige Formen erfassen mögliche Wortfamilien. Das ist keine vollständige morphologische Analyse.
+- Füllwörter, umständliche Wendungen, mögliche Redundanzen, Passivformen und Nominalstil. Diese Hinweise sind kontextabhängige Stilvorschläge, keine verbindlichen Fehlerurteile.
+- Hinweise auf lange Sätze und Absätze, mittlere Satzlänge und LIX als grobe Lesbarkeitsorientierung.
+- Lokale Synonyme für Deutsch (OpenThesaurus) und Englisch (WordNet), nach Bedeutungsgruppen getrennt. Ein Wort markieren oder den Cursor hineinsetzen und „Synonyme“ wählen. Registerhinweise bleiben sichtbar; Bedeutung und Beugung müssen vor dem Übernehmen geprüft werden.
+- Eigene Wörter, bevorzugte Schreibweisen wie `Email=>E-Mail`, typografische Anführungszeichen und mehrfache Leerzeichen. Wortlisten, Schwellen und deaktivierte Regeln sind direkt über „Einstellungen“ bearbeitbar.
+- Wörter- und Zeichenzähler, Strg+S, Speicherrückfrage beim Schließen oder Wechseln. Einstellungen werden lokal unter `%LOCALAPPDATA%/Byby_Word_and_Excel/writing.json` gespeichert; Texte werden dort nicht abgelegt.
 
-Die Rechtschreibprüfung ist noch kein umfassender Grammatik- oder Stilassistent. Die Wiederholungshinweise sind eine lokale Regel, kein KI-Modell. Als nächster Ausbau ist eine vollständig lokal gebündelte Grammatikprüfung zu evaluieren. Cloud-Dienste sind dafür nicht vorgesehen.
+Die App verwendet regelbasierte lokale Sprachprüfung und Wörterbücher. Freie KI-Umformulierungen, Sprachmodelle und YAML-Stilpakete sind bewusst noch nicht integriert. Die cloudbasierten KI-Regeln von LanguageTool sind nicht enthalten. Satz- und Absatzanalyse, Passiverkennung und Wortstämme sind Näherungen; Synonyme werden nicht automatisch passend zum Kontext umgeschrieben. Lange Texte werden für LanguageTool an Absatz- oder Wortgrenzen in Abschnitte aufgeteilt, wodurch an Grenzen Kontext fehlen kann. Es gibt keine Garantie, dass jeder Fehler erkannt wird. Weitere Bedienhinweise stehen in [docs/SCHREIBEN.md](docs/SCHREIBEN.md).
 
 ## Tabelle
 
@@ -34,14 +39,14 @@ Nicht unterstützt: alte DOC/XLS-Binärdateien, Makros, Diagramme, komplexe Exce
 
 ## Qualität und Entwicklung
 
-`test.ps1` baut beide Programme und prüft CSV mit mehrzeiligen Feldern und Anführungszeichen, Formeln, Zirkelbezüge, Schreibfehlerbehandlung, atomaren Dateiersatz sowie DOCX-/XLSX-Import anhand kleiner Testdateien. Am 25.10.2026 haben alle 25 Prüfungen bestanden. Die Tests ersetzen keine praktische Prüfung der Oberflächen und Wörterbücher.
+`test.ps1` baut beide Programme und prüft CSV, Formeln, atomaren Dateiersatz, DOCX-/XLSX-Import sowie die Schreibregeln und Parser. `test.ps1 -Integration` prüft zusätzlich echte deutsche und englische LanguageTool-Korrekturen, UTF-16-Positionen nach Emoji, Abbruch und die realen Synonymdaten. Bei der ersten vollständigen Prüfung am 25.10.2026 haben alle 25 bisherigen und 43 Schreibprüfungen bestanden. Die Tests ersetzen keine umfassende Prüfung mit eigenen Alltagstexten.
 
-Quellcode: `src/Schreib.cs`, `src/Tabelle.cs`, `src/Formats.cs`, `src/Common.cs`. Beide Programme verwenden native WPF-Oberflächen. Der Code enthält keine Netzwerkclients und führt keine Makros oder Formeln als Programmcode aus.
+Quellcode: `src/Schreib.cs`, `src/WritingPanel.cs`, `src/Writing.cs`, `src/Grammar.cs`, `src/Synonyms.cs`, `src/WritingSettingsWindow.cs`, `src/Tabelle.cs`, `src/Formats.cs`, `src/Common.cs`. Beide Programme verwenden native WPF-Oberflächen. Der Grammatikclient verwendet nur eine lokale Adresse, ohne Proxy oder Weiterleitungen. Es werden keine Makros oder Formeln als Programmcode ausgeführt. Grammatikprüfungen laufen asynchron; veraltete Ergebnisse werden verworfen. Beim normalen Beenden wird der zugehörige LanguageTool-Prozess gestoppt.
 
-Geplante Entwicklungsschritte stehen in [ROADMAP.md](ROADMAP.md). Technische Quellen: [WPF-Rechtschreibprüfung](https://learn.microsoft.com/en-us/dotnet/api/system.windows.controls.spellcheck) und [LanguageTool lokal betreiben](https://dev.languagetool.org/http-server.html). Lokales LanguageTool enthält laut Dokumentation keine cloudbasierten KI-Regeln; die Integration ist noch nicht implementiert.
+Geplante Entwicklungsschritte stehen in [ROADMAP.md](ROADMAP.md). Technische Grundlage: [LanguageTool lokal betreiben](https://dev.languagetool.org/http-server.html). Quellen und Lizenzen aller mitgelieferten Komponenten stehen in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md); der eigene MIT-Code ändert deren Lizenzen nicht.
 
 ## GitHub und Downloads
 
-Vorgesehen: öffentliches Repository `Dom-Antoni/Byby_Word_and_Excel`. Der Workflow baut und testet auf Windows. Ein Tag wie `v0.1.0` veröffentlicht beide EXE-Dateien und eine ZIP-Datei als Release. Vor einem Release müssen Oberflächen und Sprachprüfung praktisch getestet sein.
+Öffentliches Repository: [Dom-Antoni/Byby_Word_and_Excel](https://github.com/Dom-Antoni/Byby_Word_and_Excel). Der Workflow lädt die Offline-Komponenten, baut und testet auf Windows und hinterlegt das vollständige Offline-Paket als Build-Artefakt. Ein Tag wie `v0.1.0` veröffentlicht die vollständige ZIP-Datei als Release. Einzelne EXE-Dateien werden nicht als vollständiger Schreibassistent angeboten.
 
 Lizenz: MIT, siehe [LICENSE](LICENSE).
