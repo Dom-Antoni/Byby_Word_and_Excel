@@ -6,6 +6,8 @@ Ziel sind zwei eigenständige lokale Windows-Anwendungen für den tatsächlichen
 
 Bereits eingebaut: lokales LanguageTool für Deutsch/Englisch, eigene Stilregeln, einstellbare Wiederholungen, lokale Synonyme beider Sprachen, eigene Wörter, bevorzugte Schreibweisen und deaktivierbare Regeln. Sprachmodelle und YAML-Regelpakete bleiben für später.
 
+Außerdem umgesetzt: formatierter Dokumenteditor, Tab-Vervollständigung, anklickbare Zitate, EndNote-XML/RIS/CSL-JSON-Import, EndNote-RTF-Export und eine dokumentübergreifende lokale Quellenbibliothek. Der Rechtsklick-Dialog kann Quellen aus einem Link oder einer DOI erfassen; nur dieser ausdrücklich gestartete Abruf benötigt Internet. Eine separate Referenzmanager-App ist dafür vorerst nicht nötig.
+
 - Beide Oberflächen auf dem Zielrechner prüfen: Öffnen, Schreiben, Speichern, Abbrechen, Schließen und Wiedereinlesen.
 - Deutsche und englische Wörterbücher, Vorschläge und Sprachumschaltung mit realistischen Texten testen.
 - Tabellenbearbeitung samt Formelzeile und Blattwechsel prüfen; Mehrzellen-Einfügen ergänzen.

@@ -12,7 +12,13 @@ Für die Entwicklung unter Windows x64 zunächst `setup-offline.ps1`, danach `bu
 
 ## Schreib
 
-- Texte schreiben und lesen, TXT und Markdown in UTF-8 speichern.
+Neu: Word-ähnliche Dokumentfläche mit Formatierung, lokale Wortvorschläge (Pfeiltasten + Tab), anklickbare farbige Zitate und ein Literaturbereich. Referenzmanager werden über EndNote-XML, RIS und CSL-JSON angebunden. EndNotes dokumentierter RTF-/Format-Paper-Weg steht für dessen Zitierstile bereit; es gibt keine direkte ENL-Datenbanksynchronisation und kein eingebettetes Word-Add-in. Details: [Referenzen, Dokumente und Wortvorschläge](docs/REFERENZEN.md).
+
+**Referenz per Link hinzufügen:** Im Dokument rechtsklicken → „Referenz hinzufügen“ → „Aus Link / DOI“ → „Angaben abrufen“. Gefundene Metadaten prüfen und „Speichern & zitieren“ wählen. Eine eigene lokale Quellenbibliothek speichert die bestätigten Einträge dokumentübergreifend. Optionaler Internetzugriff findet nur beim ausdrücklich gestarteten Linkabruf statt; die Grammatikprüfung und bereits gespeicherte Quellen funktionieren offline. Fehlende Angaben lassen sich manuell ergänzen, ohne KI oder Onlinekonto. RIS-Export erlaubt die Weitergabe an EndNote, Zotero und Mendeley.
+
+Zum Weiterbearbeiten mit Formatierung und Quellen `.schreib` verwenden. RTF-Export erstellt eine separate formatierte Datei; TXT/Markdown bleiben reine Textformate. Die App bleibt eine schlanke Schreibanwendung ohne vollständiges Word-Seitenlayout.
+
+- Texte schreiben und lesen, formatiert als `.schreib` oder RTF und unformatiert als TXT/Markdown speichern.
 - DOCX als reinen Text importieren. Die Originaldatei wird dabei nicht überschrieben. Bilder, Layout, Kommentare, Kopf-/Fußzeilen und komplexe Inhalte werden nicht übernommen.
 - Lokale Rechtschreib-, Grammatik- und Zeichensetzungsprüfung durch LanguageTool 6.6, mit Deutsch, britischem oder amerikanischem Englisch. „Prüfen“ startet eine Prüfung sofort; nach Textänderungen wird automatisch geprüft.
 - Kategorisierte Hinweise mit Erklärung: Stelle auswählen, markierten Text prüfen, einen angebotenen Vorschlag übernehmen, Fundstelle ignorieren oder Regel abschalten. Ohne passende Ersatzformulierung bleibt der Hinweis eine Hilfestellung zum eigenen Überarbeiten.

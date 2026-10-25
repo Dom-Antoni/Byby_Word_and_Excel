@@ -10,7 +10,7 @@ using System.Windows.Media;
 
 internal sealed class WritingPanel : DockPanel,IDisposable
 {
-    readonly TextBox editor;
+    readonly DocumentEditor editor;
     readonly TextBlock state=new TextBlock(),detail=new TextBlock(),title=new TextBlock();
     readonly ListBox hints=new ListBox(),replacements=new ListBox();
     readonly ComboBox category=new ComboBox();
@@ -22,7 +22,7 @@ internal sealed class WritingPanel : DockPanel,IDisposable
     CancellationTokenSource checking;
     string analyzedText="";bool closed;int generation;
     public int LanguageIndex {get{return Array.IndexOf(new[]{"de-DE","en-GB","en-US"},settings.Language);}}
-    public WritingPanel(TextBox editor)
+    public WritingPanel(DocumentEditor editor)
     {
         this.editor=editor;
         try {settings=WritingSettings.Load();}
@@ -45,14 +45,14 @@ internal sealed class WritingPanel : DockPanel,IDisposable
     public async void Check()
     {
         if(closed)return;if(checking!=null)checking.Cancel();checking=new CancellationTokenSource();var cancellation=checking;
-        int version=++generation;string text=editor.Text;var snapshot=settings.Copy();analyzedText=text;
-        issues=Writing.Analyze(text,snapshot);Render();
+        int version=++generation;string text=editor.Text;string proof=editor.ProofText;var snapshot=settings.Copy();analyzedText=text;
+        issues=Writing.Analyze(proof,snapshot);foreach(var issue in issues)issue.Original=text.Substring(issue.Start,issue.Length);Render();
         if(string.IsNullOrWhiteSpace(text)){state.Text="Bereit · Prüfung vollständig auf diesem Computer";cancellation.Dispose();checking=null;return;}
         state.Text="Grammatik wird lokal geprüft … Der erste Start kann einige Sekunden dauern.";
         try
         {
-            var result=await grammar.Check(text,snapshot,cancellation.Token);if(closed || version!=generation || text!=editor.Text)return;
-            issues=issues.Concat(result.Issues).OrderBy(x=>x.Start).ToList();Render();state.Text=result.Status;
+            var result=await grammar.Check(proof,snapshot,cancellation.Token);if(closed || version!=generation || text!=editor.Text)return;
+            issues=issues.Concat(result.Issues.Where(x=>x.Fits(text))).OrderBy(x=>x.Start).ToList();Render();state.Text=result.Status;
         }
         catch(OperationCanceledException){if(!closed && version==generation)state.Text="Zeitlimit erreicht oder Prüfung abgebrochen. Erneut prüfen.";}
         catch(Exception ex){if(!closed && version==generation)state.Text="Nur Stilregeln geprüft · Grammatik nicht verfügbar: "+ex.Message;}

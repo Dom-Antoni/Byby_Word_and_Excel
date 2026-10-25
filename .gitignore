@@ -1,4 +1,6 @@
 dist/
+dist-next/
+dist-latest/
 .downloads/
 vendor/
 *.user
