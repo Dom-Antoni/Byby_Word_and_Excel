@@ -8,9 +8,13 @@ Zwei kleine, getrennte Windows-Desktop-Apps, um alltägliches Schreiben und einf
 
 ## Starten
 
+**[Setup herunterladen](https://github.com/Dom-Antoni/Byby_Word_and_Excel/releases/latest/download/Schreib-und-Tabelle-Setup.exe)** · **[Alle Downloads / Offline-Installer](https://github.com/Dom-Antoni/Byby_Word_and_Excel/releases/latest)**
+
+Setup anklicken, Optionen bestätigen, fertig. Beide Apps stehen danach im Startmenü und lassen sich unter Windows → Installierte Apps wieder entfernen. Optional werden Desktop-Symbole, „Öffnen mit“ und **Neu → Schreib-Dokument / Tabelle** im Explorer eingerichtet. Der kleine Assistent lädt das vollständige Paket einmalig von GitHub; ein großer Offline-Installer ist ebenfalls verfügbar. Bestehende Dateistandards bleiben erhalten. [Installation und Deinstallation](docs/INSTALLATION.md).
+
 Für die Entwicklung unter Windows x64 zunächst `setup-offline.ps1`, danach `build.ps1` mit PowerShell 7 ausführen. Der erste Schritt lädt die Sprachkomponenten einmalig herunter. Anschließend `dist/Schreib.exe` oder `dist/Tabelle.exe` doppelklicken. Benötigt wird das Windows .NET Framework mit WPF; kein Office und kein .NET SDK. Eine portable Java-Laufzeit für LanguageTool wird im App-Ordner mitgeliefert, ohne Systeminstallation.
 
-`package.ps1` erstellt `dist/Byby_Word_and_Excel-Windows-x64-offline.zip`. Zum Weitergeben immer dieses vollständige Paket verwenden, vollständig entpacken und `Schreib.exe` starten. Die Ordner `runtime`, `languagetool` und `synonyms` müssen neben der EXE bleiben. Nach dem Download läuft die App ohne Internet. Die Programme sind unsigniert; ein Installer und ein als stabil freigegebener Release fehlen noch.
+`package.ps1` erstellt als portable Alternative `dist/Byby_Word_and_Excel-Windows-x64-offline.zip`. Vollständig entpacken und `Schreib.exe` oder `Tabelle.exe` starten. Die Ordner `runtime`, `languagetool` und `synonyms` müssen neben den EXE-Dateien bleiben. Nach dem Download laufen die Apps ohne Internet. Die eigenen Programme und Setups sind noch unsigniert; die veröffentlichten Versionen sind zum Alltagstest gedacht.
 
 ## Schreib
 
@@ -45,6 +49,7 @@ Die App verwendet regelbasierte lokale Sprachprüfung und Wörterbücher. Freie 
 
 - Leseansicht mit größeren Zellen, abwechselnden Zeilenfarben, festen Spaltennamen und deutlichen Zeilennummern. Menüs für Datei, Bearbeiten, Ansicht und Daten sowie Blattreiter, Suche, Zoom und Hell-/Dunkelmodus.
 - CSV/TSV/TXT öffnen: Semikolon, Komma oder Tabulator werden automatisch erkannt. Zitate, mehrzeilige Felder, Excel-sep-Angaben und gängige Textkodierungen werden berücksichtigt; die Trennzeichenwahl lässt sich korrigieren.
+- Eigene `.tabelle`-Dateien über Explorer → Neu erzeugen und direkt bearbeiten. Sie speichern ein einzelnes Blatt auf CSV-Basis (UTF-8, Semikolon), inklusive Zelltexten und einfachen Formeln. Strg+S speichert direkt; „Speichern unter / Blatt exportieren“ bietet zusätzlich CSV und TSV an.
 - XLSX/XLSM/XLTX/XLTM, ODS/FODS, Excel-XML und einfache HTML-Tabellen als Zellwerte importieren. Mehrere Blätter und gängige Excel-Datumsformate werden unterstützt. Gespeicherte Formelergebnisse werden gelesen; fehlende Ergebnisse sind markiert. Keine Neuberechnung beliebiger Excel-Formeln.
 - Der Import verändert Excel-/ODS-/HTML-Originale nicht. Speichern exportiert das aktuelle Blatt als CSV oder TSV; andere Blätter und Formatierungen werden nicht exportiert. [Bedienung und unterstützte Formate](docs/TABELLE.md).
 - Zellen bearbeiten, zusätzliche Zeilen und Spalten hinzufügen, zwischen Eingaben und berechneten Ergebnissen wechseln.
@@ -64,6 +69,6 @@ Geplante Entwicklungsschritte stehen in [ROADMAP.md](ROADMAP.md). Technische Gru
 
 ## GitHub und Downloads
 
-Öffentliches Repository: [Dom-Antoni/Byby_Word_and_Excel](https://github.com/Dom-Antoni/Byby_Word_and_Excel). Der Workflow lädt die Offline-Komponenten, baut und testet auf Windows und hinterlegt das vollständige Offline-Paket als Build-Artefakt. Ein Tag wie `v0.1.0` veröffentlicht die vollständige ZIP-Datei als Release. Einzelne EXE-Dateien werden nicht als vollständiger Schreibassistent angeboten.
+Öffentliches Repository: [Dom-Antoni/Byby_Word_and_Excel](https://github.com/Dom-Antoni/Byby_Word_and_Excel). Fertige Apps gibt es ohne Anmeldung unter [Releases](https://github.com/Dom-Antoni/Byby_Word_and_Excel/releases/latest). Der Workflow prüft die Apps und beide Installationswege und veröffentlicht neue `VERSION`-Werte als feste Releases. Enthalten sind Download-Setup, Offline-Setup, portable ZIP und Prüfsummen. Einzelne App-EXE-Dateien benötigen weiterhin die mitgelieferten Sprachkomponenten.
 
 Lizenz: MIT, siehe [LICENSE](LICENSE).

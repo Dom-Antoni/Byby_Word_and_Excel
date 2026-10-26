@@ -36,6 +36,10 @@ internal static class SheetChecks
     static void Run()
     {
         string folder=Path.Combine(Path.GetTempPath(),"byby-sheet-tests-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
+        string native=Path.Combine(folder,"Neue Tabelle.tabelle");File.WriteAllText(native,"");var nativeBook=SheetFiles.Read(native);
+        Assert(nativeBook.Sheets[0].Cells.GetLength(0)==100 && nativeBook.Sheets[0].Cells.GetLength(1)==26,"Leere Explorer-Tabelle öffnet bearbeitbares Blatt");
+        File.WriteAllText(native,"\"Wert;Text\";\"12,5\"\r\n\"=A1+2\";\"Mehr\nZeilen\"",new UTF8Encoding(true));nativeBook=SheetFiles.Read(native);
+        Assert(nativeBook.Sheets[0].Cells[0,0]=="Wert;Text" && nativeBook.Sheets[0].Cells[0,1]=="12,5" && nativeBook.Sheets[0].Cells[1,1]=="Mehr\nZeilen","Tabelle-Datei bewahrt Trennzeichen, Dezimalzahlen und Umbrüche");
         Assert(SheetFiles.Detect("Name;Wert\nA;1,25\nB;2,50")==';',"Dezimal-Komma nicht als Trennzeichen");
         Assert(SheetFiles.Detect("Name,Wert\nA,12\nB,13")==',',"Komma erkannt");
         Assert(SheetFiles.Detect("Name\tWert\nA\t12\nB\t13")=='\t',"Tabulator erkannt");
@@ -111,6 +115,11 @@ internal static class SheetChecks
             window.OpenPath(xlsx);sheets.SelectedIndex=1;Assert(grid.Columns.Count==1 && grid.Columns[0].Header.ToString().Contains("Blatt zwei"),"Blattreiter wechseln Inhalt");
             sheets.SelectedIndex=0;Click(Menu(menu,"Bearbeitung aktivieren"),true);window.SelectCell(1,1);formula.Text="123";Children<Button>(root).First(x=>Convert.ToString(x.Content)=="Übernehmen").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             sheets.SelectedIndex=1;sheets.SelectedIndex=0;Assert(((DataRowView)grid.Items[0])[1].ToString()=="123","Änderungen bleiben beim Blattwechsel erhalten");
+            string own=Path.Combine(folder,"Speichern direkt.tabelle");File.WriteAllText(own,"");window.OpenPath(own);
+            Assert(!grid.IsReadOnly && grid.Columns.Count==26 && grid.Items.Count==100,"Neue Explorer-Tabelle ist direkt bearbeitbar");
+            window.SelectCell(0,0);formula.Text="=2*3";Children<Button>(root).First(x=>Convert.ToString(x.Content)=="Übernehmen").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            bool saved=(bool)typeof(Tabelle).GetMethod("Save",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(window,new object[]{false});
+            Assert(saved && SheetFiles.Read(own).Sheets[0].Cells[0,0]=="=2*3","Strg+S speichert eigene Tabelle ohne erneute Dateiauswahl");
             string large=Path.Combine(folder,"large.tsv");
             using(var writer=new StreamWriter(large,false,new UTF8Encoding(true))){writer.WriteLine("ID\tName\tA\tB\tC\tD\tE\tF");for(int i=1;i<10000;i++)writer.WriteLine(i+"\tZeile "+i+"\t1\t2\t3\t4\t5\t6");}
             window.OpenPath(large);Layout(root);window.SelectCell(9999,5);Layout(root);

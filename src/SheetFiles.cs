@@ -20,7 +20,7 @@ internal sealed class SheetImport
 internal static class SheetFiles
 {
     public const int MaxRows=10000,MaxColumns=512;
-    public const string Filter="Alle unterstützten Tabellen|*.csv;*.tsv;*.tab;*.txt;*.xlsx;*.xlsm;*.xltx;*.xltm;*.ods;*.fods;*.xml;*.html;*.htm;*.xls|Excel (*.xlsx;*.xlsm;*.xltx;*.xltm)|*.xlsx;*.xlsm;*.xltx;*.xltm|CSV / Text|*.csv;*.tsv;*.tab;*.txt|OpenDocument (*.ods;*.fods)|*.ods;*.fods|HTML / Excel-XML|*.html;*.htm;*.xml;*.xls|Alle Dateien|*.*";
+    public const string Filter="Alle unterstützten Tabellen|*.tabelle;*.csv;*.tsv;*.tab;*.txt;*.xlsx;*.xlsm;*.xltx;*.xltm;*.ods;*.fods;*.xml;*.html;*.htm;*.xls|Tabelle-Datei (*.tabelle)|*.tabelle|Excel (*.xlsx;*.xlsm;*.xltx;*.xltm)|*.xlsx;*.xlsm;*.xltx;*.xltm|CSV / Text|*.csv;*.tsv;*.tab;*.txt|OpenDocument (*.ods;*.fods)|*.ods;*.fods|HTML / Excel-XML|*.html;*.htm;*.xml;*.xls|Alle Dateien|*.*";
     public static void Bounds(int rows,int columns)
     {
         if(rows<1 || columns<1 || rows>MaxRows || columns>MaxColumns)throw new FormatException("Unterstützt werden bis zu 10.000 Zeilen und 512 Spalten je Blatt.");
@@ -67,6 +67,13 @@ internal static class SheetFiles
     public static SheetImport Read(string path,char? separator=null)
     {
         string extension=Path.GetExtension(path).ToLowerInvariant();
+        if(extension==".tabelle")
+        {
+            var native=FromText(Formats.ReadText(path),';',Path.GetFileNameWithoutExtension(path));var sheet=native.Sheets[0];
+            var cells=new string[Math.Max(100,sheet.Cells.GetLength(0)),Math.Max(26,sheet.Cells.GetLength(1))];
+            for(int r=0;r<sheet.Cells.GetLength(0);r++)for(int c=0;c<sheet.Cells.GetLength(1);c++)cells[r,c]=sheet.Cells[r,c];
+            sheet.Cells=cells;native.Note="Tabelle-Datei · einzelnes Blatt auf CSV-Basis · direkt bearbeitbar";return native;
+        }
         if(new[]{".xlsx",".xlsm",".xltx",".xltm"}.Contains(extension))
             return Book(Formats.ReadXlsx(path),"Excel-Werteimport · gespeicherte Formelergebnisse; grundlegende Datumsanzeige · Export als CSV/TSV");
         if(extension==".ods")

@@ -1,0 +1,4 @@
+{
+  "Schreib": [".schreib", ".rtf", ".txt", ".md", ".markdown", ".html", ".htm", ".xhtml", ".docx", ".docm", ".dotx", ".odt", ".ott", ".log", ".tex"],
+  "Tabelle": [".tabelle", ".csv", ".tsv", ".tab", ".xlsx", ".xlsm", ".xltx", ".xltm", ".ods", ".fods"]
+}

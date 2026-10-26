@@ -25,9 +25,12 @@ internal sealed class Schreib : Window
     readonly DispatcherTimer timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
     [STAThread] public static void Main(string[] args)
     {
+        using(var running=new System.Threading.Mutex(false,"Local\\BybySchreibRunning"))
+        {
         var app=new Application();var window=new Schreib();
         if(args.Length>0)window.Loaded+=delegate{window.SafeOpen(args[0]);};
         app.Run(window);
+        }
     }
     public Schreib()
     {
@@ -104,6 +107,7 @@ internal sealed class Schreib : Window
         string extension=Path.GetExtension(fileName).ToLowerInvariant();
         if(extension==".schreib")
         {
+            if(new FileInfo(fileName).Length==0){editor.Clear();editor.ClearUndo();references.ResetDocument();assistant.ResetDocument();documentNote="Neues Schreib-Dokument";path=fileName;dirty=false;UpdateTitle();Statistics();return;}
             var document=new JavaScriptSerializer {MaxJsonLength=50000000}.Deserialize<WritingDocument>(File.ReadAllText(fileName));
             if(document==null || document.Version!=1 || document.References==null || document.Citations==null || document.BibliographyOnly==null)throw new FormatException("Ungültiges Schreib-Dokument.");
             // Validate in a separate document before replacing the current text.

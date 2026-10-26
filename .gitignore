@@ -7,6 +7,7 @@ dist-plots/
 dist-groups/
 dist-icons/
 dist-review/
+dist-setup/
 .downloads/
 vendor/
 *.user

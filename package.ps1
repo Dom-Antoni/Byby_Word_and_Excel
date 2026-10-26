@@ -12,7 +12,7 @@ try {
     foreach ($name in @('Schreib.exe','Tabelle.exe')) {
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, (Join-Path $output $name), $name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
     }
-    foreach ($name in @('README.md','LICENSE','THIRD-PARTY-NOTICES.md')) {
+    foreach ($name in @('README.md','LICENSE','THIRD-PARTY-NOTICES.md','VERSION')) {
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, (Join-Path $PSScriptRoot $name), $name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
     }
     foreach ($name in @('runtime','languagetool','synonyms','icons')) {

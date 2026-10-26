@@ -119,8 +119,11 @@ internal sealed class Tabelle : Window
     int Offset {get{return headings?1:0;}}
     [STAThread]public static void Main(string[] args)
     {
+        using(var running=new System.Threading.Mutex(false,"Local\\BybyTabelleRunning"))
+        {
         var app=new Application();var window=new Tabelle();
         if(args.Length>0)window.Loaded+=delegate{window.SafeOpen(args[0]);};app.Run(window);
+        }
     }
     public Tabelle()
     {
@@ -134,7 +137,7 @@ internal sealed class Tabelle : Window
         var ribbon=new StackPanel();Theme.Bind(ribbon,Panel.BackgroundProperty,"App.Panel");DockPanel.SetDock(ribbon,Dock.Top);root.Children.Add(ribbon);
         var menus=new Menu {Padding=new Thickness(12,2,12,2)};ribbon.Children.Add(menus);BuildMenus(menus);
         var quick=new WrapPanel {Margin=new Thickness(16,8,16,10)};ribbon.Children.Add(quick);
-        Ui.Button(quick,"Öffnen…",Open);Ui.Button(quick,"CSV / TSV speichern…",delegate{Save();});Ui.Button(quick,"Spalten anpassen",FitColumns);
+        Ui.Button(quick,"Öffnen…",Open);Ui.Button(quick,"Speichern",delegate{Save();});Ui.Button(quick,"Spalten anpassen",FitColumns);
         Ui.Button(quick,"Plot erstellen",delegate{SetPlotsVisible(true);});
         modeLabel.VerticalAlignment=VerticalAlignment.Center;modeLabel.Margin=new Thickness(12,0,0,0);Theme.Bind(modeLabel,TextBlock.ForegroundProperty,"App.Muted");quick.Children.Add(modeLabel);
         var formulaBar=new DockPanel {Margin=new Thickness(16,10,16,8)};DockPanel.SetDock(formulaBar,Dock.Top);root.Children.Add(formulaBar);
@@ -178,7 +181,7 @@ internal sealed class Tabelle : Window
     }
     void BuildMenus(Menu menus)
     {
-        var file=Item(menus,"_Datei");Item(file,"_Neu",New,"Strg+N");Item(file,"Ö_ffnen / Importieren…",Open,"Strg+O");Item(file,"CSV / TSV _speichern…",delegate{Save();},"Strg+S");file.Items.Add(new Separator());Item(file,"Schließen",Close,"Alt+F4");
+        var file=Item(menus,"_Datei");Item(file,"_Neu",New,"Strg+N");Item(file,"Ö_ffnen / Importieren…",Open,"Strg+O");Item(file,"_Speichern",delegate{Save();},"Strg+S");Item(file,"Speichern unter / Blatt exportieren…",delegate{Save(true);});file.Items.Add(new Separator());Item(file,"Schließen",Close,"Alt+F4");
         var edit=Item(menus,"_Bearbeiten");editItem=Check(edit,"Bearbeitung aktivieren",true,delegate(MenuItem item){Sync();editing=item.IsChecked;if(editing){results=false;resultItem.IsChecked=false;}Render();});
         var copy=Item(edit,"Auswahl kopieren",null,"Strg+C");copy.Command=System.Windows.Input.ApplicationCommands.Copy;copy.CommandTarget=grid;
         Item(edit,"_Suchen…",ShowSearch,"Strg+F");edit.Items.Add(new Separator());
@@ -284,7 +287,7 @@ internal sealed class Tabelle : Window
     string[,] CellsFor(int index){return workbook[index].Cells;}
     internal void OpenPath(string fileName)
     {
-        var imported=SheetFiles.Read(fileName,forcedSeparator);SetBook(imported,fileName,true);
+        var imported=SheetFiles.Read(fileName,forcedSeparator);SetBook(imported,fileName,!Path.GetExtension(fileName).Equals(".tabelle",StringComparison.OrdinalIgnoreCase));
     }
     void SafeOpen(string fileName){try{OpenPath(Path.GetFullPath(fileName));}catch(Exception ex){MessageBox.Show(ex.Message,"Datei konnte nicht geöffnet werden",MessageBoxButton.OK,MessageBoxImage.Error);}}
     void Open(){if(!CanLeave())return;var dialog=new OpenFileDialog {Filter=SheetFiles.Filter};if(dialog.ShowDialog()==true)SafeOpen(dialog.FileName);}
@@ -398,22 +401,26 @@ internal sealed class Tabelle : Window
         }
         MessageBox.Show("Kein passender Zellinhalt gefunden.","Suchen");
     }
-    bool Save()
+    bool Save(bool saveAs=false)
     {
-        Sync();string suggested=Active.ExportPath??(Active.Name+".csv");
-        var dialog=new SaveFileDialog {Filter="CSV (*.csv)|*.csv|TSV (*.tsv)|*.tsv",FileName=Path.GetFileName(suggested),DefaultExt=".csv",AddExtension=true};
-        if(dialog.ShowDialog()!=true)return false;
+        Sync();string suggested=Active.ExportPath??(Active.Name+(path==null?".tabelle":".csv"));string target=null;
+        if(!saveAs && path!=null && Path.GetExtension(path).Equals(".tabelle",StringComparison.OrdinalIgnoreCase))target=path;
+        if(target==null)
+        {
+            var dialog=new SaveFileDialog {Filter="Tabelle-Datei (*.tabelle)|*.tabelle|CSV (*.csv)|*.csv|TSV (*.tsv)|*.tsv",FileName=Path.GetFileName(suggested),DefaultExt=Path.GetExtension(suggested),FilterIndex=Path.GetExtension(suggested)==".csv"?2:Path.GetExtension(suggested)==".tsv"?3:1,AddExtension=true};
+            if(dialog.ShowDialog()!=true)return false;target=dialog.FileName;
+        }
         try
         {
-            string extension=Path.GetExtension(dialog.FileName).ToLowerInvariant();
-            if(extension!=".csv" && extension!=".tsv" && extension!=".txt")throw new FormatException("Der Export unterstützt CSV und TSV. Bitte eine Endung .csv oder .tsv wählen.");
-            char output=extension==".tsv"?'\t':delimiter;
+            string extension=Path.GetExtension(target).ToLowerInvariant();
+            if(extension!=".tabelle" && extension!=".csv" && extension!=".tsv" && extension!=".txt")throw new FormatException("Bitte eine Endung .tabelle, .csv oder .tsv wählen.");
+            char output=extension==".tabelle"?';':extension==".tsv"?'\t':delimiter;
             int lastRow=0,lastCol=0;for(int r=0;r<Cells.GetLength(0);r++)for(int c=0;c<Cells.GetLength(1);c++)if(!string.IsNullOrEmpty(Cells[r,c])){lastRow=Math.Max(lastRow,r);lastCol=Math.Max(lastCol,c);}
-            Ui.AtomicWrite(dialog.FileName,delegate(string temporary)
+            Ui.AtomicWrite(target,delegate(string temporary)
             {
                 using(var writer=new StreamWriter(temporary,false,new UTF8Encoding(true)))for(int r=0;r<=lastRow;r++){var fields=new List<string>();for(int c=0;c<=lastCol;c++)fields.Add(Sheet.Quote(Cells[r,c]??""));writer.WriteLine(string.Join(output.ToString(),fields));}
             });
-            Active.ExportPath=dialog.FileName;changed.Remove(Active);if(workbook.Count==1 && sourceText!=null){path=dialog.FileName;sourceText=File.ReadAllText(path);delimiter=output;}UpdateTitle();UpdateStatus();return true;
+            Active.ExportPath=target;changed.Remove(Active);if(workbook.Count==1){path=target;sourceText=File.ReadAllText(path);delimiter=output;}UpdateTitle();UpdateStatus();return true;
         }
         catch(Exception ex){MessageBox.Show(ex.Message,"Speichern fehlgeschlagen");return false;}
     }

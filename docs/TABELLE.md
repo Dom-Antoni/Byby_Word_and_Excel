@@ -1,10 +1,12 @@
 # Tabelle ansehen und importieren
 
-Tabelle ist vor allem zum Lesen und Scrollen gedacht. Vorhandene Dateien öffnen in der **Leseansicht**. Zum Ändern unter **Bearbeiten → Bearbeitung aktivieren** umschalten. Neue Tabellen sind direkt bearbeitbar.
+Tabelle ist vor allem zum Lesen und Scrollen gedacht. Importierte Dateien öffnen in der **Leseansicht**. Zum Ändern unter **Bearbeiten → Bearbeitung aktivieren** umschalten. Neue Tabellen und eigene `.tabelle`-Dateien sind direkt bearbeitbar.
+
+Nach einer Installation lässt sich über Rechtsklick im Explorer oder auf dem Desktop → **Neu → Tabelle** eine `.tabelle`-Datei anlegen. Doppelklick öffnet ein leeres Blatt mit 100 Zeilen und 26 Spalten. Das Format speichert ein einzelnes Blatt mit Zelltexten und einfachen Formeln als UTF-8/CSV mit Semikolon, ohne Excel-Formatierung oder Plot-Einstellungen. **Strg+S** speichert direkt in diese Datei; **Speichern unter / Blatt exportieren** bietet zusätzlich CSV und TSV an. Importierte Excel-Arbeitsmappen bleiben unverändert; beim Export wird weiterhin nur das aktuelle Blatt geschrieben.
 
 ## Übersicht und Navigation
 
-- **Datei:** neue Tabelle, Öffnen/Importieren, CSV-/TSV-Speicherung und Schließen.
+- **Datei:** neue Tabelle, Öffnen/Importieren, Speichern, Speichern unter / Blatt exportieren und Schließen.
 - **Bearbeiten:** Bearbeitung einschalten, Auswahl kopieren, Suchen und einfache Erweiterung um Zeilen/Spalten.
 - **Ansicht:** Spaltennamen, erste Spalte fixieren, Textumbruch, Spaltenbreiten, Zoom, Formelergebnisse sowie Hell/Dunkel/Windows-Darstellung.
 - **Daten:** Import und automatische oder manuelle Wahl des Text-Trennzeichens.
