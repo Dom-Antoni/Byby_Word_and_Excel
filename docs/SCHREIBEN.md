@@ -9,11 +9,17 @@
 
 ## Hinweise steuern
 
-- **Ignorieren** blendet diese Fundstelle bis zur nächsten Textänderung aus.
+- **Ignorieren** blendet genau diese Fundstelle auch bei automatischen und manuellen Folgeprüfungen aus. Einfügungen oder Löschungen davor verschieben die gespeicherte Position mit. Wird die Fundstelle selbst geändert, wird sie wieder geprüft. Andere Vorkommen derselben Regel bleiben sichtbar. Im `.schreib`-Format werden ignorierte Fundstellen für dieses Dokument und die gewählte Sprache mitgespeichert; TXT und RTF speichern diese Entscheidungen nicht.
 - **Regel aus** deaktiviert genau diese Regel dauerhaft. Unter Einstellungen lässt sie sich wieder aktivieren.
 - **Eigenes Wort** nimmt ein markiertes Wort oder das Wort eines Hinweises in das lokale Wörterbuch auf. Es wird bei Rechtschreib- und Wiederholungshinweisen berücksichtigt; Grammatik bleibt prüfbar.
 - **Einstellungen** enthält Wortabstand, Satz-/Absatzlänge, Stilregeln, eigene Wörter und bevorzugte Schreibweisen. Beispiel: `Email=>E-Mail`. Jede Zuordnung steht auf einer eigenen Zeile; sie wird für den aktuellen Text unabhängig von der gewählten Sprache angewendet.
 - Über den Kategorienfilter lassen sich Rechtschreibung, Grammatik, Wiederholungen, Stil, Lesbarkeit oder Einheitlichkeit getrennt ansehen.
+- Alle aktiven Hinweise erscheinen direkt im Text: **rote Wellenlinie** für Rechtschreibung, **blaue Linie** für Grammatik, **gelbe Punktlinie** für Stil, Wiederholung, Lesbarkeit und Einheitlichkeit. Der Kategorienfilter begrenzt die Seitenleiste; die Textmarkierungen zeigen weiterhin alle aktiven Hinweise. Die Linien sind reine Anzeige, verändern keine Formatierung und landen nicht im Export.
+- Enter trennt Absätze für die Absatzlängenprüfung. Jeder Absatz wird einzeln gezählt; die Statusleiste zeigt zusätzlich die Anzahl der nicht leeren Textabsätze.
+
+## Quellen im Text
+
+Quellenverweise verwenden die normale Textfarbe mit dezenter Unterstreichung und ohne hellen Farbkasten. Nach dem Einfügen steht der Cursor außerhalb der Quelle zum Weiterschreiben. Die Pfeiltasten überspringen Quellen als Ganzes; ein Klick öffnet weiterhin die zugehörige Literaturangabe. Rücktaste unmittelbar hinter einer Quelle oder Entf unmittelbar davor löscht den gesamten Verweis. Eine Auswahl, die in eine Quelle hineinreicht, umfasst automatisch den ganzen Verweis. Das Löschen kann mit Rückgängig aufgehoben werden. Die Quelle bleibt in der lokalen Bibliothek erhalten.
 
 ## Synonyme
 

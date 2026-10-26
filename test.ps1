@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 $output=Join-Path $PSScriptRoot $OutputDirectory
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $framework = Split-Path $compiler
-$themeSource=Join-Path $PSScriptRoot 'src\Theme.cs'
+$themeSource=@('src/Theme.cs','src/Proofing.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
 $plotSources=@('src/PlotData.cs','src/PlotGrouping.cs','src/PlotDrawing.cs','src/PlotPanel.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
 $references = @('System.dll','System.Core.dll','System.Data.dll','System.Net.Http.dll','System.Web.Extensions.dll','System.Xaml.dll','System.Xml.dll','System.Xml.Linq.dll','System.IO.Compression.dll','System.IO.Compression.FileSystem.dll') | ForEach-Object { '/reference:' + (Join-Path $framework $_) }
 $references += @('PresentationFramework.dll','PresentationCore.dll','WindowsBase.dll') | ForEach-Object { '/reference:' + (Join-Path (Join-Path $framework 'WPF') $_) }
@@ -38,6 +38,11 @@ $documentSources=@('src/Common.cs','src/Writing.cs','src/DocumentEditor.cs','src
 if ($LASTEXITCODE -ne 0) { throw 'Dokumenttests konnten nicht gebaut werden.' }
 & (Join-Path $output 'DocumentChecks.exe')
 if ($LASTEXITCODE -ne 0) { throw 'Dokumenttests fehlgeschlagen.' }
+$editorSources=@('src/Common.cs','src/Writing.cs','src/Grammar.cs','src/Synonyms.cs','src/WritingPanel.cs','src/WritingSettingsWindow.cs','src/DocumentEditor.cs','src/References.cs','src/ReferenceStore.cs','tests/EditorReviewChecks.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
+& $compiler /nologo /target:exe /main:EditorReviewChecks ('/out:'+(Join-Path $output 'EditorReviewChecks.exe')) $references $themeSource $editorSources
+if ($LASTEXITCODE -ne 0) {throw 'Editorprüfungen konnten nicht gebaut werden.'}
+& (Join-Path $output 'EditorReviewChecks.exe')
+if ($LASTEXITCODE -ne 0) {throw 'Editorprüfungen fehlgeschlagen.'}
 $lookupSources=@('src/Common.cs','src/References.cs','src/ReferenceStore.cs','src/ReferenceLookup.cs','tests/ReferenceLookupChecks.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
 & $compiler /nologo /target:exe /main:ReferenceLookupChecks ('/out:'+(Join-Path $output 'ReferenceLookupChecks.exe')) $references $themeSource $lookupSources
 if ($LASTEXITCODE -ne 0) {throw 'Linktests konnten nicht gebaut werden.'}

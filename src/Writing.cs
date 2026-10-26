@@ -45,7 +45,7 @@ internal sealed class WritingIssue
     public List<string> Replacements = new List<string>();
     public override string ToString() { return Category+" · "+Message; }
     public bool Fits(string text) { return Start>=0 && Length>=0 && Start+Length<=text.Length && text.Substring(Start,Length)==Original; }
-    public string Key { get { return Rule+":"+Start+":"+Original; } }
+    public string Key { get { return Rule+":"+Start+":"+Length+":"+Original; } }
 }
 
 internal static class Writing
@@ -119,7 +119,7 @@ internal static class Writing
         }
         if(settings.Enabled("sentence"))foreach(Match sentence in Regex.Matches(text,@"[^.!?\r\n]+[.!?]?"))
         { int count=Words.Matches(sentence.Value).Count;if(count>settings.LongSentence)issues.Add(Issue(text,sentence,"sentence","Lesbarkeit",count+" Wörter in diesem Satz. Lässt er sich sinnvoll teilen?")); }
-        if(settings.Enabled("paragraph"))foreach(Match paragraph in Regex.Matches(text,@"[^\r\n]+(?:\r?\n(?!\r?\n)[^\r\n]+)*"))
+        if(settings.Enabled("paragraph"))foreach(Match paragraph in Regex.Matches(text,@"[^\r\n\u2028\u2029]+"))
         { int count=Words.Matches(paragraph.Value).Count;if(count>settings.LongParagraph)issues.Add(Issue(text,paragraph,"paragraph","Lesbarkeit",count+" Wörter in diesem Absatz. Ein zusätzlicher Absatz könnte helfen.")); }
         Pattern(issues,text,settings,"spaces",@"(?<=\S) {2,}(?=\S)","Mehrere Leerzeichen zwischen Wörtern."," ");
         if(settings.Enabled("quotes"))foreach(Match quote in Regex.Matches(text,"\"([^\"\r\n]+)\""))
@@ -138,6 +138,7 @@ internal static class Writing
         int sentences=Math.Max(1,Regex.Matches(text,@"[^.!?\r\n]*\p{L}[^.!?\r\n]*[.!?]?").Count);
         double average=(double)words.Length/sentences;
         double lix=average+100.0*words.Count(x=>x.Length>6)/words.Length;
-        return words.Length+" Wörter · "+text.Length+" Zeichen · Ø "+average.ToString("0.0",CultureInfo.GetCultureInfo("de-DE"))+" Wörter/Satz · LIX "+lix.ToString("0",CultureInfo.InvariantCulture)+" (grobe Orientierung)";
+        int paragraphs=Regex.Split(text,@"\r\n|[\r\n\u2028\u2029]").Count(x=>Words.IsMatch(x));
+        return words.Length+" Wörter · "+paragraphs+" Absätze · "+text.Length+" Zeichen · Ø "+average.ToString("0.0",CultureInfo.GetCultureInfo("de-DE"))+" Wörter/Satz · LIX "+lix.ToString("0",CultureInfo.InvariantCulture)+" (grobe Orientierung)";
     }
 }

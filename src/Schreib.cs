@@ -43,6 +43,7 @@ internal sealed class Schreib : Window
         status.Margin = new Thickness(20,8,20,8); DockPanel.SetDock(status, Dock.Bottom); root.Children.Add(status);
         var tabs=new TabControl {Width=390,Margin=new Thickness(0,14,14,0)};DockPanel.SetDock(tabs,Dock.Right);root.Children.Add(tabs);
         assistant = new WritingPanel(editor) {Margin=new Thickness(12)};tabs.Items.Add(new TabItem {Header="Schreibprüfung",Content=assistant});
+        assistant.ReviewChanged+=delegate{dirty=true;UpdateTitle();};
         references=new ReferencePanel(editor){Margin=new Thickness(12)};var refTab=new TabItem {Header="Referenzen",Content=new ScrollViewer {Content=references,VerticalScrollBarVisibility=ScrollBarVisibility.Auto}};tabs.Items.Add(refTab);
         references.Reveal+=delegate{tabs.SelectedItem=refTab;};references.Changed+=delegate{dirty=true;UpdateTitle();};
         completion=new Completion(editor);
@@ -81,7 +82,7 @@ internal sealed class Schreib : Window
     }
     MenuItem Item(ItemsControl parent,string title,Action action=null,string shortcut=null){var item=new MenuItem {Header=title,InputGestureText=shortcut??""};if(action!=null)item.Click+=delegate{try{action();}catch(Exception ex){MessageBox.Show(ex.Message,"Aktion fehlgeschlagen");}};parent.Items.Add(item);return item;}
     void Command(ItemsControl parent,string title,ICommand command,string shortcut=null){var item=Item(parent,title,null,shortcut);item.Command=command;item.CommandTarget=editor;}
-    void New(){if(CanLeave()){editor.Clear();editor.ClearUndo();references.ResetDocument();documentNote="";path=null;dirty=false;UpdateTitle();Statistics();}}
+    void New(){if(CanLeave()){editor.Clear();editor.ClearUndo();assistant.ResetDocument();references.ResetDocument();documentNote="";path=null;dirty=false;UpdateTitle();Statistics();}}
     void SafeOpen(string fileName){try{OpenPath(Path.GetFullPath(fileName));}catch(Exception ex){MessageBox.Show(ex.Message,"Datei konnte nicht geöffnet werden",MessageBoxButton.OK,MessageBoxImage.Error);}}
     void Statistics(){status.Text=Writing.Statistics(editor.Text)+(string.IsNullOrWhiteSpace(documentNote)?"":"\n"+documentNote);status.TextWrapping=TextWrapping.Wrap;}
     void Analyze()
@@ -109,10 +110,10 @@ internal sealed class Schreib : Window
             var check=new DocumentEditor();check.LoadRtf(document.Rtf);
             if(document.References.Any(x=>x==null || string.IsNullOrWhiteSpace(x.Id) || x.Authors==null) || document.References.Select(x=>x.Id).Distinct().Count()!=document.References.Count || document.Citations.Any(x=>x==null || x.Start<0 || x.Length<1 || x.Start+ x.Length>check.Text.Length || !document.References.Any(r=>r.Id==x.ReferenceId)))throw new FormatException("Ungültige Quellen oder Zitierpositionen im Dokument.");
             check.RestoreCitations(document.Citations,document.References);
-            references.ResetDocument();references.MergeDocument(document.References);references.BibliographyOnly=document.BibliographyOnly;editor.LoadRtf(document.Rtf);editor.RestoreCitations(document.Citations,references.References);references.SetStyle(document.Numbered);references.RefreshLibrary();documentNote="";path=fileName;dirty=false;UpdateTitle();Statistics();return;
+            references.ResetDocument();references.MergeDocument(document.References);references.BibliographyOnly=document.BibliographyOnly;editor.LoadRtf(document.Rtf);editor.RestoreCitations(document.Citations,references.References);references.SetStyle(document.Numbered);references.RefreshLibrary();assistant.ResetDocument(document.IgnoredHints);documentNote="";path=fileName;dirty=false;UpdateTitle();Statistics();return;
         }
-        if(extension==".rtf"){var check=new DocumentEditor();string rtf=Convert.ToBase64String(File.ReadAllBytes(fileName));check.LoadRtf(rtf);editor.LoadRtf(rtf);references.ResetDocument();documentNote="RTF-Dokument";path=fileName;dirty=false;UpdateTitle();Statistics();return;}
-        var imported=DocumentFiles.Read(fileName);var scratch=new DocumentEditor {Document=imported.Document};string content=scratch.SaveRtf();references.ResetDocument();editor.LoadRtf(content);documentNote=imported.Note;path=imported.Converted?null:fileName;dirty=imported.Converted;UpdateTitle();Statistics();
+        if(extension==".rtf"){var check=new DocumentEditor();string rtf=Convert.ToBase64String(File.ReadAllBytes(fileName));check.LoadRtf(rtf);editor.LoadRtf(rtf);assistant.ResetDocument();references.ResetDocument();documentNote="RTF-Dokument";path=fileName;dirty=false;UpdateTitle();Statistics();return;}
+        var imported=DocumentFiles.Read(fileName);var scratch=new DocumentEditor {Document=imported.Document};string content=scratch.SaveRtf();references.ResetDocument();editor.LoadRtf(content);assistant.ResetDocument();documentNote=imported.Note;path=imported.Converted?null:fileName;dirty=imported.Converted;UpdateTitle();Statistics();
     }
     bool Save(bool saveAs)
     {
@@ -127,7 +128,7 @@ internal sealed class Schreib : Window
         {
             string extension=Path.GetExtension(target).ToLowerInvariant();
             if(extension!=".schreib" && (references.References.Count>0 || editor.Citations().Count>0) && MessageBox.Show("Quellverknüpfungen und importierte Referenzen bleiben nur im .schreib-Format erhalten. Trotzdem eine vereinfachte Datei speichern?","Dokumentformat",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return false;
-            Ui.AtomicWrite(target,delegate(string temp){if(extension==".schreib"){var document=new WritingDocument {Rtf=editor.SaveRtf(),References=references.DocumentReferences(),Citations=editor.Citations(),BibliographyOnly=references.BibliographyOnly,Numbered=references.Numbered};File.WriteAllText(temp,new JavaScriptSerializer {MaxJsonLength=50000000}.Serialize(document),new UTF8Encoding(false));}else if(extension==".rtf")File.WriteAllBytes(temp,Convert.FromBase64String(editor.SaveRtf()));else File.WriteAllText(temp,editor.Text,new UTF8Encoding(true));});path=target;dirty=false;UpdateTitle();return true;
+            Ui.AtomicWrite(target,delegate(string temp){if(extension==".schreib"){var document=new WritingDocument {Rtf=editor.SaveRtf(),References=references.DocumentReferences(),Citations=editor.Citations(),IgnoredHints=assistant.DismissedHints,BibliographyOnly=references.BibliographyOnly,Numbered=references.Numbered};File.WriteAllText(temp,new JavaScriptSerializer {MaxJsonLength=50000000}.Serialize(document),new UTF8Encoding(false));}else if(extension==".rtf")File.WriteAllBytes(temp,Convert.FromBase64String(editor.SaveRtf()));else File.WriteAllText(temp,editor.Text,new UTF8Encoding(true));});path=target;dirty=false;UpdateTitle();return true;
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Speichern fehlgeschlagen"); return false; }
     }

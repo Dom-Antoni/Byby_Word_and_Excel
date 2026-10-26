@@ -94,6 +94,7 @@ internal sealed class WritingDocument
     public string Rtf;
     public List<Reference> References=new List<Reference>();
     public List<CitationMark> Citations=new List<CitationMark>();
+    public List<DismissedHint> IgnoredHints=new List<DismissedHint>();
     public List<string> BibliographyOnly=new List<string>();
     public bool Numbered;
 }
