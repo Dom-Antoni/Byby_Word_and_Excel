@@ -85,7 +85,8 @@ Set-Item -LiteralPath 'HKCU:\Software\Classes\.schreib' -Value 'Other.Writer'
 Remove-Setup $offline
 Assert-Setup ((Get-Item 'HKCU:\Software\Classes\.schreib').GetValue('') -eq 'Other.Writer') 'Spätere Dateizuordnung bleibt nach Deinstallation erhalten'
 Assert-Setup ((Get-Item 'HKCU:\Software\Classes\.txt').GetValue('') -eq 'Existing.Text.Editor') 'Fremde Textzuordnung bleibt nach Deinstallation erhalten'
-Remove-ItemProperty -LiteralPath 'HKCU:\Software\Classes\.schreib' -Name '(default)'
+$resetKey=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Classes\.schreib',$true)
+try {$resetKey.DeleteValue('',$false)} finally {$resetKey.Dispose()}
 
 # Exercise real downloading, integrity rejection, extraction and uninstall over loopback.
 $compiler=Join-Path $PSScriptRoot 'vendor\inno-6.7.3\ISCC.exe'
