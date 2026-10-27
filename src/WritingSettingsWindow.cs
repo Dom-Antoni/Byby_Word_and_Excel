@@ -15,6 +15,8 @@ internal sealed class WritingSettingsWindow : Window
         var scroll=new ScrollViewer {VerticalScrollBarVisibility=ScrollBarVisibility.Auto};root.Children.Add(scroll);var fields=new StackPanel();scroll.Content=fields;
         Label(fields,"Prüfung an deinen Schreibstil anpassen",22);
         Label(fields,"Stilhinweise sind Vorschläge. Fehlerkorrekturen und Stilregeln lassen sich einzeln abschalten.",14);
+        var automatic=new CheckBox {Content="Nach einer Schreibpause automatisch prüfen",IsChecked=Value.Automatic,Margin=new Thickness(0,10,0,6)};fields.Children.Add(automatic);
+        var pause=Number(fields,"Schreibpause bis zur Prüfung (800–5000 Millisekunden)",Value.PauseMilliseconds);
         var distance=Number(fields,"Wiederholungsabstand in Wörtern (1–100)",Value.RepeatDistance);
         var sentence=Number(fields,"Hinweis ab dieser Satzlänge (10–100 Wörter)",Value.LongSentence);
         var paragraph=Number(fields,"Hinweis ab dieser Absatzlänge (30–1000 Wörter)",Value.LongParagraph);
@@ -27,9 +29,10 @@ internal sealed class WritingSettingsWindow : Window
         Label(fields,"Zum Reaktivieren eine Grammatikregel aus dieser Liste entfernen. Eigene Wörter werden bei Rechtschreib- und Wiederholungshinweisen berücksichtigt.",13);
         Ui.Button(actions,"Speichern",delegate
         {
-            int d,s,p;if(!int.TryParse(distance.Text,out d)||d<1||d>100||!int.TryParse(sentence.Text,out s)||s<10||s>100||!int.TryParse(paragraph.Text,out p)||p<30||p>1000){MessageBox.Show("Bitte Zahlen innerhalb der angegebenen Bereiche eingeben.","Einstellungen");return;}
+            int d,s,p,pauseMs;if(!int.TryParse(pause.Text,out pauseMs)||pauseMs<800||pauseMs>5000||!int.TryParse(distance.Text,out d)||d<1||d>100||!int.TryParse(sentence.Text,out s)||s<10||s>100||!int.TryParse(paragraph.Text,out p)||p<30||p>1000){MessageBox.Show("Bitte Zahlen innerhalb der angegebenen Bereiche eingeben.","Einstellungen");return;}
             foreach(string line in terms.Text.Split('\n')){if(string.IsNullOrWhiteSpace(line))continue;var pair=line.Trim().Split(new[]{"=>"},StringSplitOptions.None);if(pair.Length!=2 || string.IsNullOrWhiteSpace(pair[0]) || string.IsNullOrWhiteSpace(pair[1])){MessageBox.Show("Schreibweisen bitte als Variante=>Bevorzugt eingeben.");return;}}
             Value.RepeatDistance=d;Value.LongSentence=s;Value.LongParagraph=p;Value.PersonalWords=Lines(words.Text);Value.Terms=terms.Text.Replace("\r","");
+            Value.Automatic=automatic.IsChecked==true;Value.PauseMilliseconds=pauseMs;
             Value.Disabled=Lines(disabled.Text).Where(x=>x.StartsWith("lt:")).ToList();foreach(var pair in toggles)if(pair.Value.IsChecked!=true)Value.Disabled.Add(pair.Key);
             DialogResult=true;
         });

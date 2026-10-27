@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Web.Script.Serialization;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -16,6 +17,7 @@ internal static class EditorReviewChecks
 {
     static int count;
     static void Assert(bool value,string name){if(!value)throw new Exception(name);count++;}
+    static void Check(WritingPanel panel,DocumentEditor editor){var task=panel.CheckAsync();var until=DateTime.UtcNow.AddSeconds(5);while(!task.IsCompleted && DateTime.UtcNow<until){Pump(editor);System.Threading.Thread.Sleep(1);}Assert(task.IsCompleted,"Hintergrundprüfung wird fertig");task.GetAwaiter().GetResult();}
     static IEnumerable<T> Descendants<T>(DependencyObject root) where T:DependencyObject
     {foreach(object child in LogicalTreeHelper.GetChildren(root)){var value=child as T;if(value!=null)yield return value;var dependency=child as DependencyObject;if(dependency!=null)foreach(var nested in Descendants<T>(dependency))yield return nested;}}
     static void Pump(DocumentEditor editor){editor.UpdateLayout();editor.Dispatcher.Invoke(new Action(delegate{}),DispatcherPriority.ApplicationIdle);}
@@ -71,20 +73,20 @@ internal static class EditorReviewChecks
             editor.ScrollToEnd();Pump(editor);var scrolled=new RenderTargetBitmap(600,300,96,96,PixelFormats.Pbgra32);scrolled.Render(root);var scrolledEncoder=new PngBitmapEncoder();scrolledEncoder.Frames.Add(BitmapFrame.Create(scrolled));using(var stream=File.Create(Path.Combine(folder,"scrolled.png")))scrolledEncoder.Save(stream);
             editor.ScrollToHome();
             editor.Text="Das ist eigentlich klar.";
-            using(var assistant=new WritingPanel(editor,new WritingSettings()))
+            using(var assistant=new WritingPanel(editor,new WritingSettings(),delegate{return Task.FromResult(new GrammarResult {Status="Test-Grammatik"});}))
             {
                 editor.TextChanged+=delegate{if(!editor.PresentationChanging)assistant.Invalidate();};
-                assistant.Check();var list=Descendants<ListBox>(assistant).Single(x=>x.Items.Cast<object>().OfType<ListBoxItem>().Any(i=>i.Tag is WritingIssue));
+                Check(assistant,editor);var list=Descendants<ListBox>(assistant).Single(x=>x.Items.Cast<object>().OfType<ListBoxItem>().Any(i=>i.Tag is WritingIssue));
                 list.SelectedItem=list.Items.Cast<ListBoxItem>().Single(x=>((WritingIssue)x.Tag).Rule=="filler");
                 Descendants<Button>(assistant).Single(x=>Convert.ToString(x.Content)=="Ignorieren").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert(assistant.DismissedHints.Count==1 && !list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Ignorieren in der echten Seitenleiste blendet Hinweis aus");
-                assistant.Check();Assert(!list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Manuelles Nachprüfen zeigt ignorierten Hinweis nicht erneut");
-                editor.Select(0,0);editor.SelectedText="Heute: ";assistant.Check();Assert(assistant.DismissedHints.Single().Start==editor.Text.IndexOf("eigentlich",StringComparison.Ordinal) && !list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Automatische Invalidierung behält Ignorieren nach anderer Textänderung");
+                Check(assistant,editor);Assert(!list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Manuelles Nachprüfen zeigt ignorierten Hinweis nicht erneut");
+                editor.Select(0,0);editor.SelectedText="Heute: ";Check(assistant,editor);Assert(assistant.DismissedHints.Single().Start==editor.Text.IndexOf("eigentlich",StringComparison.Ordinal) && !list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Automatische Invalidierung behält Ignorieren nach anderer Textänderung");
                 string json=new JavaScriptSerializer().Serialize(new WritingDocument {Rtf=editor.SaveRtf(),IgnoredHints=assistant.DismissedHints});
-                var saved=new JavaScriptSerializer().Deserialize<WritingDocument>(json);assistant.ResetDocument(saved.IgnoredHints);assistant.Check();Assert(!list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Dokument-Rundlauf erhält ignorierte Hinweise");
-                assistant.ResetDocument();assistant.Check();Assert(list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Neues Dokument erhält eigene Hinweisliste");
+                var saved=new JavaScriptSerializer().Deserialize<WritingDocument>(json);assistant.ResetDocument(saved.IgnoredHints);Check(assistant,editor);Assert(!list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Dokument-Rundlauf erhält ignorierte Hinweise");
+                assistant.ResetDocument();Check(assistant,editor);Assert(list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Neues Dokument erhält eigene Hinweisliste");
                 editor.Select(editor.Text.IndexOf("eigentlich",StringComparison.Ordinal),10);list.SelectedItem=list.Items.Cast<ListBoxItem>().Single(x=>((WritingIssue)x.Tag).Rule=="filler");
-                Descendants<Button>(assistant).Single(x=>Convert.ToString(x.Content)=="Übernehmen").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));assistant.Check();Assert(!editor.Text.Contains("eigentlich") && !list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Korrigierter Hinweis bleibt nach erneuter Prüfung weg");
+                Descendants<Button>(assistant).Single(x=>Convert.ToString(x.Content)=="Übernehmen").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(assistant,editor);Assert(!editor.Text.Contains("eigentlich") && !list.Items.Cast<ListBoxItem>().Any(x=>((WritingIssue)x.Tag).Rule=="filler"),"Korrigierter Hinweis bleibt nach erneuter Prüfung weg");
             }
         }
     }

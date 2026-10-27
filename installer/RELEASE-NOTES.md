@@ -1,4 +1,12 @@
-Die erste Setup-Version von Schreib und Tabelle für den Alltagstest unter Windows 10/11 (64 Bit).
+Schreib und Tabelle 0.3.0 für den Alltagstest unter Windows 10/11 (64 Bit).
+
+Neu in Schreib:
+
+- Sichtbare Seitenränder auf einem fortlaufenden Blatt mit A4-Breite. Unter **Layout → Seitenränder** links, rechts, oben und unten in cm/mm einstellen, mit direkter Vorschau und Abbrechen. **Layout → Ränder mit der Maus einstellen** schaltet Linealgriffe und Hilfslinien ein. Ränder werden im `.schreib`-Dokument gespeichert.
+- Rechtsklick auf markierte Textstellen zeigt Erklärungen, direkte Ersatzvorschläge, Ignorieren und den Sprung zur Schreibprüfung. Kopieren, Einfügen und Quellen hinzufügen bleiben im selben Menü erreichbar.
+- Stil- und Grammatikprüfung laufen im Hintergrund nach standardmäßig 1,4 Sekunden Schreibpause. Höchstens eine Prüfung gleichzeitig; veraltete Ergebnisse werden verworfen. Pause und Automatik sind einstellbar.
+- Wortvorschläge durchsuchen einen vorbereiteten Index. Dokumenttext und Textpositionen werden wiederverwendet; Statistik und Literaturanzeige werden nicht bei jedem Tastendruck neu aufgebaut.
+- **Prüfen → Prüfverhalten und Laufzeiten** zeigt lokale Messwerte für die eigene Nutzung, ohne Textprotokolle.
 
 - **Schreib-und-Tabelle-Setup.exe**: Empfohlener kleiner Setup-Assistent. Lädt das vollständige Paket einmalig von diesem Release herunter, prüft SHA-256 und installiert beide Apps.
 - **Schreib-und-Tabelle-Offline-Setup.exe**: Vollständiger Installer, der während der Installation keinen Internetzugang benötigt.

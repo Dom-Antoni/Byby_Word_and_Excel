@@ -92,6 +92,7 @@ internal sealed class WritingDocument
 {
     public int Version=1;
     public string Rtf;
+    public DocumentMargins Margins;
     public List<Reference> References=new List<Reference>();
     public List<CitationMark> Citations=new List<CitationMark>();
     public List<DismissedHint> IgnoredHints=new List<DismissedHint>();

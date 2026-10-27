@@ -13,6 +13,8 @@ internal sealed class WritingSettings
     public int RepeatDistance = 7;
     public int LongSentence = 28;
     public int LongParagraph = 120;
+    public bool Automatic = true;
+    public int PauseMilliseconds = 1400;
     public string Language = "de-DE";
     public List<string> Disabled = new List<string>();
     public List<string> PersonalWords = new List<string>();
@@ -26,6 +28,7 @@ internal sealed class WritingSettings
         settings.RepeatDistance=Math.Max(1,Math.Min(100,settings.RepeatDistance));
         settings.LongSentence=Math.Max(10,Math.Min(100,settings.LongSentence));
         settings.LongParagraph=Math.Max(30,Math.Min(1000,settings.LongParagraph));
+        settings.PauseMilliseconds=Math.Max(800,Math.Min(5000,settings.PauseMilliseconds));
         if(!new[]{"de-DE","en-GB","en-US"}.Contains(settings.Language))settings.Language="de-DE";
         return settings;
     }

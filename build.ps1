@@ -14,8 +14,8 @@ if ($LASTEXITCODE -ne 0) {throw 'Icon-Werkzeug konnte nicht gebaut werden.'}
 & $iconBuilder (Join-Path $PSScriptRoot 'assets\icons') $iconDirectory
 if ($LASTEXITCODE -ne 0) {throw 'App-Icons konnten nicht erzeugt werden.'}
 foreach ($app in @('Schreib', 'Tabelle')) {
-    $sources = @((Join-Path $PSScriptRoot 'src\Common.cs'), (Join-Path $PSScriptRoot 'src\Theme.cs'), (Join-Path $PSScriptRoot 'src\Proofing.cs'), (Join-Path $PSScriptRoot 'src\Formats.cs'), (Join-Path $PSScriptRoot ('src\' + $app + '.cs')))
-    if ($app -eq 'Schreib') { $sources += @('Writing.cs','Grammar.cs','Synonyms.cs','WritingPanel.cs','WritingSettingsWindow.cs','DocumentEditor.cs','DocumentFiles.cs','References.cs','ReferencePanel.cs','Completion.cs','ReferenceStore.cs','ReferenceLookup.cs','ReferencePickerWindow.cs') | ForEach-Object { Join-Path $PSScriptRoot ('src\' + $_) } }
+    $sources = @((Join-Path $PSScriptRoot 'src\Common.cs'), (Join-Path $PSScriptRoot 'src\Theme.cs'), (Join-Path $PSScriptRoot 'src\Proofing.cs'), (Join-Path $PSScriptRoot 'src\DocumentLayout.cs'), (Join-Path $PSScriptRoot 'src\Formats.cs'), (Join-Path $PSScriptRoot ('src\' + $app + '.cs')))
+    if ($app -eq 'Schreib') { $sources += @('Writing.cs','Grammar.cs','Synonyms.cs','WritingPanel.cs','WritingSettingsWindow.cs','DocumentEditor.cs','DocumentFiles.cs','PageSurface.cs','References.cs','ReferencePanel.cs','Completion.cs','ReferenceStore.cs','ReferenceLookup.cs','ReferencePickerWindow.cs') | ForEach-Object { Join-Path $PSScriptRoot ('src\' + $_) } }
     if ($app -eq 'Tabelle') { $sources += @('SheetFiles.cs','PlotData.cs','PlotGrouping.cs','PlotDrawing.cs','PlotPanel.cs') | ForEach-Object {Join-Path $PSScriptRoot ('src\' + $_)} }
     $icon=Join-Path $iconDirectory ($app+'.ico')
     & $compiler /nologo /target:winexe /platform:anycpu /optimize+ ('/out:' + (Join-Path $output ($app + '.exe'))) ('/win32icon:'+$icon) ('/resource:'+$icon+',Byby.AppIcon.ico') $references $sources

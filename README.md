@@ -18,6 +18,8 @@ Für die Entwicklung unter Windows x64 zunächst `setup-offline.ps1`, danach `bu
 
 ## Schreib
 
+**Seitenränder und direkte Korrektur:** Unter **Layout** gibt es cm/mm-Eingabe mit Live-Vorschau und verschiebbare Linealgriffe. Rechtsklick auf Textmarkierungen zeigt Erklärung, Ersatzvorschläge und Ignorieren. Die Prüfung startet nach einer einstellbaren Schreibpause im Hintergrund; vorbereitete Wortindizes und zwischengespeicherte Textpositionen reduzieren Arbeit beim Tippen. Messwerte stehen unter **Prüfen → Prüfverhalten und Laufzeiten**. [Bedienung](docs/SCHREIBEN.md).
+
 Die Oberfläche ist in **Datei, Bearbeiten, Format, Referenzen, Prüfen und Ansicht** gegliedert. Unter **Ansicht → Darstellung** stehen Hell, Dunkel und „Wie Windows“ bereit; die Dokumentfläche lässt sich separat abdunkeln. Ein Lesemodus und eine ausblendbare Seitenleiste erleichtern das Anzeigen fremder Texte. [Darstellung und unterstützte Dateiformate](docs/ANSICHT-UND-DATEIEN.md).
 
 Zusätzlich zu Schreib/RTF/TXT lassen sich HTML, DOCX/DOCM/DOTX und ODT/OTT mit vereinfachter Formatierung importieren. Die Originaldatei wird dabei nicht überschrieben. Altes binäres DOC und PDF werden nicht direkt unterstützt. Dateien können auch per Drag-and-drop oder über `Schreib.exe "Dateipfad"` geöffnet werden.

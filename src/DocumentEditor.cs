@@ -12,17 +12,38 @@ internal sealed class DocumentEditor : RichTextBox
 {
     public event Action<string> CitationClicked;
     public bool PresentationChanging {get;private set;}
+    public event Action LayoutChanged;
+    public event Action LayoutCommitted;
+    public event Action<int> RevealPosition;
+    DocumentMargins margins=new DocumentMargins();
+    public DocumentMargins PageMargins {get{return margins.Copy();}}
+    public void SetMargins(DocumentMargins value,bool commit=true)
+    {
+        if(value==null || !value.Valid)throw new ArgumentException("Seitenränder müssen zwischen 0 und 50 mm liegen.");
+        bool changed=!margins.Same(value);margins=value.Copy();PresentationChanging=true;
+        try{Padding=margins.Padding;Document.PagePadding=new Thickness(0);}finally{PresentationChanging=false;}
+        if(changed){if(LayoutChanged!=null)LayoutChanged();if(commit)CommitLayout();}
+    }
+    public void CommitLayout(){if(LayoutCommitted!=null)LayoutCommitted();}
+    string cachedText;
+    List<TextSlice> textSlices;
+    List<Hyperlink> cachedLinks;
+    public int Revision {get;private set;}
+    internal int TextSnapshotBuilds,PointerIndexBuilds,SlowPointerCalls;
+    sealed class TextSlice {public int Start,Length;public TextPointer Pointer;}
     bool darkPaper;
     bool adjustingSelection;
     ProofAdorner proofAdorner;
+    bool proofWasVisible;
     List<ProofMark> proofMarks=new List<ProofMark>();
     readonly SolidColorBrush pageInk=new SolidColorBrush(Colors.Black);
     readonly SolidColorBrush citationInk=new SolidColorBrush(Color.FromRgb(100,118,140));
     public DocumentEditor()
     {
         AcceptsReturn=true;AcceptsTab=true;IsDocumentEnabled=true;
-        Document=new FlowDocument {FontFamily=new FontFamily("Calibri"),FontSize=16,PagePadding=new Thickness(64),ColumnWidth=10000};
+        Document=new FlowDocument {FontFamily=new FontFamily("Calibri"),FontSize=16,PagePadding=new Thickness(0),ColumnWidth=10000};
         Document.Blocks.Add(new Paragraph());
+        Padding=margins.Padding;
         Document.Foreground=pageInk;Foreground=pageInk;CaretBrush=pageInk;
         SelectionChanged+=delegate{if(!adjustingSelection)NormalizeSelection();};
         Loaded+=delegate{var layer=AdornerLayer.GetAdornerLayer(this);if(layer!=null && proofAdorner==null){proofAdorner=new ProofAdorner(this);layer.Add(proofAdorner);}RefreshProofMarks();};
@@ -39,15 +60,39 @@ internal sealed class DocumentEditor : RichTextBox
     }
     public string Text
     {
-        get{string text=new TextRange(Document.ContentStart,Document.ContentEnd).Text;return text.EndsWith("\r\n")?text.Substring(0,text.Length-2):text;}
+        get{if(cachedText==null){TextSnapshotBuilds++;string text=new TextRange(Document.ContentStart,Document.ContentEnd).Text;cachedText=text.EndsWith("\r\n")?text.Substring(0,text.Length-2):text;}return cachedText;}
         set{Document.Blocks.Clear();foreach(string line in (value??"").Replace("\r\n","\n").Split('\n'))Document.Blocks.Add(new Paragraph(new Run(line)));ApplyAppearance(darkPaper);}
     }
     internal TextPointer Pointer(int offset)
     {
+        offset=Math.Max(0,Math.Min(offset,Text.Length));
+        if(textSlices==null)BuildPointerIndex();
+        if(textSlices.Count>0)
+        {
+            int lo=0,hi=textSlices.Count-1;while(lo<hi){int mid=(lo+hi+1)/2;if(textSlices[mid].Start<=offset)lo=mid;else hi=mid-1;}
+            var slice=textSlices[lo];if(offset>=slice.Start && offset<=slice.Start+slice.Length)return slice.Pointer.GetPositionAtOffset(offset-slice.Start,LogicalDirection.Forward).GetInsertionPosition(LogicalDirection.Forward);
+        }
+        SlowPointerCalls++;
         int limit=new TextRange(Document.ContentStart,Document.ContentEnd).Text.Length;offset=Math.Max(0,Math.Min(offset,limit));
         TextPointer start=Document.ContentStart;int low=0,high=start.GetOffsetToPosition(Document.ContentEnd);
         while(low<high){int mid=low+(high-low)/2;var pointer=start.GetPositionAtOffset(mid,LogicalDirection.Forward);int length=new TextRange(start,pointer).Text.Length;if(length<offset)low=mid+1;else high=mid;}
         var result=start.GetPositionAtOffset(low,LogicalDirection.Forward);return result.GetInsertionPosition(LogicalDirection.Forward)??Document.ContentEnd;
+    }
+    protected override void OnTextChanged(TextChangedEventArgs e)
+    {
+        cachedText=null;textSlices=null;cachedLinks=null;Revision++;base.OnTextChanged(e);
+    }
+    void BuildPointerIndex()
+    {
+        PointerIndexBuilds++;var slices=new List<TextSlice>();var pointer=Document.ContentStart;var anchor=Document.ContentStart;int offset=0;
+        while(pointer!=null && pointer.CompareTo(Document.ContentEnd)<0)
+        {
+            if(pointer.GetPointerContext(LogicalDirection.Forward)==TextPointerContext.Text)
+            {offset+=new TextRange(anchor,pointer).Text.Length;int length=pointer.GetTextRunLength(LogicalDirection.Forward);slices.Add(new TextSlice {Start=offset,Length=length,Pointer=pointer});anchor=pointer;pointer=pointer.GetPositionAtOffset(length,LogicalDirection.Forward);}
+            else {var next=pointer.GetNextContextPosition(LogicalDirection.Forward);if(next==null)break;pointer=next;}
+        }
+        // Unusual embedded content retains the original exact range lookup.
+        textSlices=slices.Count==0 || slices[slices.Count-1].Start+slices[slices.Count-1].Length<=Text.Length?slices:new List<TextSlice>();
     }
     public int SelectionStart{get{return new TextRange(Document.ContentStart,Selection.Start).Text.Length;}}
     public int SelectionLength{get{return Selection.Text.Length;}}
@@ -60,7 +105,7 @@ internal sealed class DocumentEditor : RichTextBox
     public void Clear(){Text="";}
     public void ClearUndo(){bool enabled=IsUndoEnabled;IsUndoEnabled=false;IsUndoEnabled=enabled;}
     public int GetLineIndexFromCharacterIndex(int index){return index;}
-    public void ScrollToLine(int index){var rect=Pointer(index).GetCharacterRect(LogicalDirection.Forward);if(!rect.IsEmpty)ScrollToVerticalOffset(VerticalOffset+rect.Top-40);}
+    public void ScrollToLine(int index){if(RevealPosition!=null){RevealPosition(index);return;}var rect=Pointer(index).GetCharacterRect(LogicalDirection.Forward);if(!rect.IsEmpty)ScrollToVerticalOffset(VerticalOffset+rect.Top-40);}
     public void InsertCitation(Reference reference,string label)
     {
         BeginChange();adjustingSelection=true;
@@ -146,10 +191,16 @@ internal sealed class DocumentEditor : RichTextBox
         link.ToolTip="Quelle öffnen · Rücktaste / Entf löscht den gesamten Quellenverweis";
     }
     public void SetProofMarks(IEnumerable<ProofMark> marks){proofMarks=(marks??Enumerable.Empty<ProofMark>()).ToList();RefreshProofMarks();}
-    void RefreshProofMarks(){if(proofAdorner!=null)proofAdorner.InvalidateVisual();}
+    void RefreshProofMarks(){if(proofAdorner!=null && (proofMarks.Count>0 || proofWasVisible)){proofWasVisible=proofMarks.Count>0;proofAdorner.InvalidateVisual();}}
+    public void SetProofMarksVisibleChanged(){RefreshProofMarks();}
     IEnumerable<Hyperlink> Links(DependencyObject root)
     {
-        foreach(object child in LogicalTreeHelper.GetChildren(root)){var link=child as Hyperlink;if(link!=null && link.NavigateUri!=null && link.NavigateUri.Scheme=="schreibref")yield return link;var dependency=child as DependencyObject;if(dependency!=null)foreach(var nested in Links(dependency))yield return nested;}
+        if(root==Document){if(cachedLinks==null)cachedLinks=FindLinks(root).ToList();return cachedLinks;}
+        return FindLinks(root);
+    }
+    IEnumerable<Hyperlink> FindLinks(DependencyObject root)
+    {
+        foreach(object child in LogicalTreeHelper.GetChildren(root)){var link=child as Hyperlink;if(link!=null && link.NavigateUri!=null && link.NavigateUri.Scheme=="schreibref")yield return link;var dependency=child as DependencyObject;if(dependency!=null)foreach(var nested in FindLinks(dependency))yield return nested;}
     }
     public List<CitationMark> Citations()
     {
@@ -169,6 +220,7 @@ internal sealed class DocumentEditor : RichTextBox
     {
         using(var stream=new MemoryStream(Convert.FromBase64String(value)))new TextRange(Document.ContentStart,Document.ContentEnd).Load(stream,DataFormats.Rtf);
         Normalize(Document);Document.Foreground=pageInk;Document.Background=Brushes.Transparent;foreach(var link in Links(Document))StyleCitation(link);ApplyAppearance(darkPaper);ClearUndo();
+        SetMargins(margins,false);
     }
     static void Normalize(DependencyObject root)
     {
@@ -179,19 +231,33 @@ internal sealed class DocumentEditor : RichTextBox
         foreach(var mark in marks.OrderByDescending(x=>x.Start)){var reference=references.FirstOrDefault(x=>x.Id==mark.ReferenceId);if(reference==null || mark.Start<0 || mark.Length<1 || mark.Start+mark.Length>Text.Length)continue;Select(mark.Start,mark.Length);string label=SelectedText;InsertCitation(reference,label);}
         Select(0,0);
     }
+    public int OffsetAt(Point point){var pointer=GetPositionFromPoint(point,true);return pointer==null?SelectionStart:new TextRange(Document.ContentStart,pointer).Text.Length;}
+    Rect VisiblePaper()
+    {
+        Rect rect=new Rect(RenderSize);
+        for(DependencyObject parent=VisualTreeHelper.GetParent(this);parent!=null;parent=VisualTreeHelper.GetParent(parent))
+        {
+            var viewport=parent as ScrollContentPresenter;if(viewport==null)continue;
+            var inverse=TransformToAncestor(viewport).Inverse;if(inverse!=null)rect.Intersect(inverse.TransformBounds(new Rect(viewport.RenderSize)));
+        }
+        return rect;
+    }
     sealed class ProofAdorner : Adorner
     {
         readonly DocumentEditor editor;
         public ProofAdorner(DocumentEditor editor):base(editor){this.editor=editor;IsHitTestVisible=false;}
         protected override void OnRender(DrawingContext drawing)
         {
-            var viewport=new Rect(editor.RenderSize);drawing.PushClip(new RectangleGeometry(viewport));
+            var viewport=editor.VisiblePaper();if(viewport.IsEmpty)return;drawing.PushClip(new RectangleGeometry(viewport));
             int textLength=editor.Text.Length;
             foreach(var mark in editor.proofMarks)
             {
                 if(mark.Start<0 || mark.Length<1 || mark.Start>textLength-mark.Length)continue;
                 var start=editor.Pointer(mark.Start);var end=editor.Pointer(mark.Start+mark.Length);
                 if(!start.HasValidLayout || !end.HasValidLayout)continue;
+                if(end.GetCharacterRect(LogicalDirection.Backward).Bottom<viewport.Top)continue;
+                if(start.GetCharacterRect(LogicalDirection.Forward).Top<viewport.Top)
+                {var visible=editor.GetPositionFromPoint(new Point(editor.Padding.Left+1,viewport.Top+1),true);if(visible!=null && visible.CompareTo(start)>0)start=visible.GetLineStartPosition(0)??visible;}
                 bool spelling=mark.Kind=="spelling",grammar=mark.Kind=="grammar";
                 var color=spelling?(editor.darkPaper?Color.FromRgb(255,116,116):Color.FromRgb(200,35,44)):grammar?(editor.darkPaper?Color.FromRgb(112,180,255):Color.FromRgb(36,103,201)):(editor.darkPaper?Color.FromRgb(247,203,73):Color.FromRgb(174,123,0));
                 var pen=new Pen(new SolidColorBrush(color),1.5);if(!spelling)pen.DashStyle=grammar?DashStyles.Solid:DashStyles.Dot;
@@ -200,7 +266,7 @@ internal sealed class DocumentEditor : RichTextBox
                     var next=start.GetLineStartPosition(1);var stop=next==null || next.CompareTo(end)>0?end:next;
                     var first=start.GetCharacterRect(LogicalDirection.Forward);var last=stop.GetCharacterRect(LogicalDirection.Backward);
                     if(first.Top>viewport.Bottom)break;
-                    if(first.Bottom>=0 && !first.IsEmpty && !last.IsEmpty)
+                    if(first.Bottom>=viewport.Top && !first.IsEmpty && !last.IsEmpty)
                     {
                         double right=Math.Min(viewport.Right,last.Right),left=Math.Max(0,first.Left),y=first.Bottom+(spelling?0:grammar?2:4);
                         if(right>left)

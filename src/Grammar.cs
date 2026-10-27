@@ -32,21 +32,21 @@ internal sealed class GrammarClient : IDisposable
     }
     public async Task<GrammarResult> Check(string text,WritingSettings settings,CancellationToken cancel)
     {
-        await gate.WaitAsync(cancel);
+        await gate.WaitAsync(cancel).ConfigureAwait(false);
         try
         {
             if(disposed)throw new ObjectDisposedException("GrammarClient");
-            await Start(cancel);
+            await Start(cancel).ConfigureAwait(false);
             var result=new GrammarResult();
             // Paragraph chunks retain full UTF-16 offsets and avoid the server's per-request limit.
             foreach(var chunk in Chunks(text,12000))
             {
                 cancel.ThrowIfCancellationRequested();
                 using(var body=new FormUrlEncodedContent(new Dictionary<string,string> { {"text",chunk.Value},{"language",settings.Language},{"enabledOnly","false"},{"level","picky"} }))
-                using(var response=await client.PostAsync("http://127.0.0.1:"+port+"/v2/check",body,cancel))
+                using(var response=await client.PostAsync("http://127.0.0.1:"+port+"/v2/check",body,cancel).ConfigureAwait(false))
                 {
                     response.EnsureSuccessStatusCode();
-                    string json=await response.Content.ReadAsStringAsync();
+                    string json=await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     result.Issues.AddRange(Parse(json,text,chunk.Offset,settings));
                 }
             }
@@ -91,10 +91,10 @@ internal sealed class GrammarClient : IDisposable
             cancel.ThrowIfCancellationRequested();if(server.HasExited)throw new IOException("Die lokale Grammatikprüfung konnte nicht starten.");
             try
             {
-                using(var response=await client.GetAsync("http://127.0.0.1:"+port+"/v2/languages",cancel))if(response.IsSuccessStatusCode){ready=true;return;}
+                using(var response=await client.GetAsync("http://127.0.0.1:"+port+"/v2/languages",cancel).ConfigureAwait(false))if(response.IsSuccessStatusCode){ready=true;return;}
             }
             catch(HttpRequestException){}
-            await Task.Delay(250,cancel);
+            await Task.Delay(250,cancel).ConfigureAwait(false);
         }
         throw new TimeoutException("Die lokale Grammatikprüfung braucht zu lange zum Starten. Erneut prüfen.");
     }

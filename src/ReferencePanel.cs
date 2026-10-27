@@ -27,6 +27,7 @@ internal sealed class ReferencePanel : DockPanel
     public bool Numbered;
     readonly ComboBox style;
     readonly ReferenceStore store;
+    readonly System.Windows.Threading.DispatcherTimer refreshTimer=new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background) {Interval=TimeSpan.FromMilliseconds(650)};
     public ReferencePanel(DocumentEditor editor,ReferenceStore sourceStore=null)
     {
         this.editor=editor;
@@ -45,7 +46,8 @@ internal sealed class ReferencePanel : DockPanel
         style.SelectionChanged+=delegate{Numbered=style.SelectedIndex==1;UpdateCitationLabels();RefreshBibliography();Notify();};
         top.Children.Add(new TextBlock {Text="Literaturverzeichnis",FontSize=18,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,8,0,6)});top.Children.Add(count);
         bibliography.HorizontalContentAlignment=HorizontalAlignment.Stretch;ScrollViewer.SetHorizontalScrollBarVisibility(bibliography,ScrollBarVisibility.Disabled);Children.Add(bibliography);
-        editor.CitationClicked+=Jump;editor.TextChanged+=delegate{if(editor.PresentationChanging)return;ReturnPosition=null;RefreshBibliography();};
+        refreshTimer.Tick+=delegate{refreshTimer.Stop();RefreshBibliography();};Unloaded+=delegate{refreshTimer.Stop();};
+        editor.CitationClicked+=Jump;editor.TextChanged+=delegate{if(editor.PresentationChanging)return;ReturnPosition=null;refreshTimer.Stop();refreshTimer.Start();};
         editor.PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Z && Keyboard.Modifiers==ModifierKeys.Control && ReturnPosition.HasValue){Return();e.Handled=true;}};
         PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Z && Keyboard.Modifiers==ModifierKeys.Control && ReturnPosition.HasValue){Return();e.Handled=true;}};
         RefreshLibrary();

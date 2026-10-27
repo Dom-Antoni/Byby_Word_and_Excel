@@ -20,9 +20,11 @@ internal sealed class Schreib : Window
     readonly WritingPanel assistant;
     readonly ReferencePanel references;
     readonly Completion completion;
+    readonly PageSurface pageSurface;
     string documentNote="";
     string path; bool dirty;
-    readonly DispatcherTimer timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+    readonly DispatcherTimer timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(1400) };
+    readonly DispatcherTimer statisticsTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(650) };
     [STAThread] public static void Main(string[] args)
     {
         using(var running=new System.Threading.Mutex(false,"Local\\BybySchreibRunning"))
@@ -48,6 +50,7 @@ internal sealed class Schreib : Window
         assistant = new WritingPanel(editor) {Margin=new Thickness(12)};tabs.Items.Add(new TabItem {Header="Schreibprüfung",Content=assistant});
         assistant.ReviewChanged+=delegate{dirty=true;UpdateTitle();};
         references=new ReferencePanel(editor){Margin=new Thickness(12)};var refTab=new TabItem {Header="Referenzen",Content=new ScrollViewer {Content=references,VerticalScrollBarVisibility=ScrollBarVisibility.Auto}};tabs.Items.Add(refTab);
+        assistant.AttachContextMenu(editor.ContextMenu);assistant.RevealRequested+=delegate{tabs.Visibility=Visibility.Visible;tabs.SelectedIndex=0;};
         references.Reveal+=delegate{tabs.SelectedItem=refTab;};references.Changed+=delegate{dirty=true;UpdateTitle();};
         completion=new Completion(editor);
         int languageIndex=assistant.LanguageIndex;editor.Language=XmlLanguage.GetLanguage(new[]{"de-DE","en-GB","en-US"}[languageIndex]);completion.Language=new[]{"de-DE","en-GB","en-US"}[languageIndex];
@@ -58,8 +61,12 @@ internal sealed class Schreib : Window
         var file=Item(menus,"_Datei");Item(file,"_Neu",New,"Strg+N");Item(file,"Ö_ffnen…",Open,"Strg+O");Item(file,"_Speichern",delegate{Save(false);},"Strg+S");Item(file,"Speichern _unter…",delegate{Save(true);},"Strg+Umschalt+S");file.Items.Add(new Separator());var export=Item(file,"Exportieren");Item(export,"RTF mit Literaturverzeichnis…",delegate{Export(false);});Item(export,"RTF für EndNote…",delegate{Export(true);});file.Items.Add(new Separator());Item(file,"Schließen",Close,"Alt+F4");
         var edit=Item(menus,"_Bearbeiten");Command(edit,"Rückgängig",ApplicationCommands.Undo,"Strg+Z");Command(edit,"Wiederholen",ApplicationCommands.Redo,"Strg+Y");edit.Items.Add(new Separator());Command(edit,"Ausschneiden",ApplicationCommands.Cut,"Strg+X");Command(edit,"Kopieren",ApplicationCommands.Copy,"Strg+C");Command(edit,"Einfügen",ApplicationCommands.Paste,"Strg+V");Command(edit,"Alles auswählen",ApplicationCommands.SelectAll,"Strg+A");
         var formatting=Item(menus,"F_ormat");Command(formatting,"Fett",EditingCommands.ToggleBold,"Strg+B");Command(formatting,"Kursiv",EditingCommands.ToggleItalic,"Strg+I");Command(formatting,"Unterstrichen",EditingCommands.ToggleUnderline,"Strg+U");Item(formatting,"Überschrift",delegate{editor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty,26.0);editor.Selection.ApplyPropertyValue(TextElement.FontWeightProperty,FontWeights.Bold);editor.Focus();});Item(formatting,"Normaler Text",delegate{editor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty,16.0);editor.Selection.ApplyPropertyValue(TextElement.FontWeightProperty,FontWeights.Normal);editor.Focus();});Command(formatting,"Aufzählung",EditingCommands.ToggleBullets);Command(formatting,"Linksbündig",EditingCommands.AlignLeft);Command(formatting,"Zentriert",EditingCommands.AlignCenter);Command(formatting,"Rechtsbündig",EditingCommands.AlignRight);
+        var layout=Item(menus,"_Layout");Item(layout,"Seitenränder…",delegate{new PageMarginsWindow(editor){Owner=this}.ShowDialog();});
+        var mouseMargins=Item(layout,"Ränder mit der Maus einstellen");mouseMargins.IsCheckable=true;mouseMargins.Click+=delegate{pageSurface.SetMouseMargins(mouseMargins.IsChecked);};
         var sources=Item(menus,"_Referenzen");Item(sources,"Referenz hinzufügen…",references.AddReference);Item(sources,"Quellenbibliothek anzeigen",delegate{tabs.Visibility=Visibility.Visible;tabs.SelectedItem=refTab;});Item(sources,"RTF für EndNote exportieren…",delegate{Export(true);});
         var proof=Item(menus,"_Prüfen");Item(proof,"Jetzt prüfen",delegate{timer.Stop();assistant.Check();});Item(proof,"Synonyme",assistant.FindSynonyms);Item(proof,"Prüfeinstellungen…",assistant.Settings);
+        var automatic=Item(proof,"Automatisch nach Schreibpause prüfen");automatic.IsCheckable=true;automatic.IsChecked=assistant.Automatic;automatic.Click+=delegate{assistant.SetAutomatic(automatic.IsChecked);};proof.SubmenuOpened+=delegate{automatic.IsChecked=assistant.Automatic;};
+        Item(proof,"Prüfverhalten und Laufzeiten…",delegate{MessageBox.Show(assistant.Diagnostics,"Schreib · Prüfverhalten");});
         var languages=Item(proof,"Sprache");var languageItems=new System.Collections.Generic.List<MenuItem>();for(int i=0;i<3;i++){int index=i;var entry=Item(languages,new[]{"Deutsch","English (UK)","English (US)"}[i],delegate{languageIndex=index;editor.Language=XmlLanguage.GetLanguage(new[]{"de-DE","en-GB","en-US"}[index]);completion.Language=new[]{"de-DE","en-GB","en-US"}[index];assistant.SetLanguage(index);for(int n=0;n<languageItems.Count;n++)languageItems[n].IsChecked=n==index;});entry.IsCheckable=true;entry.IsChecked=i==languageIndex;languageItems.Add(entry);}
         var suggest=Item(proof,"Wortvorschläge (Tab übernimmt)");suggest.IsCheckable=true;suggest.IsChecked=true;suggest.Click+=delegate{completion.Enabled=suggest.IsChecked && !editor.IsReadOnly;completion.Close();};
         var view=Item(menus,"_Ansicht");var modes=Item(view,"Darstellung");var appearanceItems=new System.Collections.Generic.List<MenuItem>();foreach(string mode in new[]{"System","Light","Dark"}){string chosen=mode;var entry=Item(modes,mode=="System"?"Wie Windows":mode=="Light"?"Hell":"Dunkel",delegate{Theme.Set(chosen,Theme.Current.DarkDocument);});entry.IsCheckable=true;entry.IsChecked=Theme.Current.Mode==mode;entry.Tag=mode;appearanceItems.Add(entry);}
@@ -69,12 +76,14 @@ internal sealed class Schreib : Window
         var reading=Item(view,"Lesemodus");reading.IsCheckable=true;reading.Click+=delegate{editor.IsReadOnly=reading.IsChecked;format.IsEnabled=!reading.IsChecked;formatting.IsEnabled=!reading.IsChecked;completion.Enabled=suggest.IsChecked && !reading.IsChecked;completion.Close();};
         editor.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
         editor.BorderThickness=new Thickness(0);SpellCheck.SetIsEnabled(editor, false);
-        var page=new Border {Background=Brushes.White,BorderBrush=new SolidColorBrush(Color.FromRgb(204,210,219)),BorderThickness=new Thickness(1),Margin=new Thickness(24,14,24,0),MaxWidth=860,Child=editor};root.Children.Add(page);
-        Action appearanceChanged=delegate{editor.ApplyAppearance(Theme.Dark && Theme.Current.DarkDocument);page.Background=editor.Background;Theme.Bind(page,Border.BorderBrushProperty,"App.Border");foreach(var item in appearanceItems)item.IsChecked=(string)item.Tag==Theme.Current.Mode;paper.IsChecked=Theme.Current.DarkDocument;};Theme.Changed+=appearanceChanged;appearanceChanged();
-        editor.TextChanged += delegate {if(editor.PresentationChanging)return;dirty = true; UpdateTitle(); assistant.Invalidate();Statistics();timer.Stop(); timer.Start(); };
-        timer.Tick += delegate { timer.Stop(); Analyze(); };
+        pageSurface=new PageSurface(editor);root.Children.Add(pageSurface);
+        Action appearanceChanged=delegate{editor.ApplyAppearance(Theme.Dark && Theme.Current.DarkDocument);pageSurface.RefreshRulers();foreach(var item in appearanceItems)item.IsChecked=(string)item.Tag==Theme.Current.Mode;paper.IsChecked=Theme.Current.DarkDocument;};Theme.Changed+=appearanceChanged;appearanceChanged();
+        editor.LayoutCommitted+=delegate{if(!dirty){dirty=true;UpdateTitle();}};
+        editor.TextChanged += delegate {if(editor.PresentationChanging)return;if(!dirty){dirty=true;UpdateTitle();}assistant.Invalidate();statisticsTimer.Stop();statisticsTimer.Start();timer.Stop();timer.Interval=TimeSpan.FromMilliseconds(assistant.PauseMilliseconds);if(assistant.Automatic)timer.Start();};
+        statisticsTimer.Tick+=delegate{statisticsTimer.Stop();Statistics();};
+        timer.Tick += delegate { timer.Stop();assistant.CheckAsync(true); };
         Closing += delegate(object sender, System.ComponentModel.CancelEventArgs e) { e.Cancel = !CanLeave(); };
-        Closed += delegate {Theme.Changed-=appearanceChanged;timer.Stop();completion.Close();assistant.Dispose();};
+        Closed += delegate {Theme.Changed-=appearanceChanged;timer.Stop();statisticsTimer.Stop();completion.Dispose();assistant.Dispose();};
         PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Z && Keyboard.Modifiers==ModifierKeys.Control && references.ReturnPosition.HasValue){references.Return();e.Handled=true;}};
         var saveCommand = new System.Windows.Input.CommandBinding(System.Windows.Input.ApplicationCommands.Save, delegate { Save(false); });
         CommandBindings.Add(saveCommand);
@@ -85,7 +94,7 @@ internal sealed class Schreib : Window
     }
     MenuItem Item(ItemsControl parent,string title,Action action=null,string shortcut=null){var item=new MenuItem {Header=title,InputGestureText=shortcut??""};if(action!=null)item.Click+=delegate{try{action();}catch(Exception ex){MessageBox.Show(ex.Message,"Aktion fehlgeschlagen");}};parent.Items.Add(item);return item;}
     void Command(ItemsControl parent,string title,ICommand command,string shortcut=null){var item=Item(parent,title,null,shortcut);item.Command=command;item.CommandTarget=editor;}
-    void New(){if(CanLeave()){editor.Clear();editor.ClearUndo();assistant.ResetDocument();references.ResetDocument();documentNote="";path=null;dirty=false;UpdateTitle();Statistics();}}
+    void New(){if(CanLeave()){editor.Clear();editor.SetMargins(new DocumentMargins(),false);editor.ClearUndo();assistant.ResetDocument();references.ResetDocument();documentNote="";path=null;dirty=false;UpdateTitle();Statistics();}}
     void SafeOpen(string fileName){try{OpenPath(Path.GetFullPath(fileName));}catch(Exception ex){MessageBox.Show(ex.Message,"Datei konnte nicht geöffnet werden",MessageBoxButton.OK,MessageBoxImage.Error);}}
     void Statistics(){status.Text=Writing.Statistics(editor.Text)+(string.IsNullOrWhiteSpace(documentNote)?"":"\n"+documentNote);status.TextWrapping=TextWrapping.Wrap;}
     void Analyze()
@@ -107,17 +116,17 @@ internal sealed class Schreib : Window
         string extension=Path.GetExtension(fileName).ToLowerInvariant();
         if(extension==".schreib")
         {
-            if(new FileInfo(fileName).Length==0){editor.Clear();editor.ClearUndo();references.ResetDocument();assistant.ResetDocument();documentNote="Neues Schreib-Dokument";path=fileName;dirty=false;UpdateTitle();Statistics();return;}
+            if(new FileInfo(fileName).Length==0){editor.Clear();editor.SetMargins(new DocumentMargins(),false);editor.ClearUndo();references.ResetDocument();assistant.ResetDocument();documentNote="Neues Schreib-Dokument";path=fileName;dirty=false;UpdateTitle();Statistics();return;}
             var document=new JavaScriptSerializer {MaxJsonLength=50000000}.Deserialize<WritingDocument>(File.ReadAllText(fileName));
             if(document==null || document.Version!=1 || document.References==null || document.Citations==null || document.BibliographyOnly==null)throw new FormatException("Ungültiges Schreib-Dokument.");
             // Validate in a separate document before replacing the current text.
             var check=new DocumentEditor();check.LoadRtf(document.Rtf);
             if(document.References.Any(x=>x==null || string.IsNullOrWhiteSpace(x.Id) || x.Authors==null) || document.References.Select(x=>x.Id).Distinct().Count()!=document.References.Count || document.Citations.Any(x=>x==null || x.Start<0 || x.Length<1 || x.Start+ x.Length>check.Text.Length || !document.References.Any(r=>r.Id==x.ReferenceId)))throw new FormatException("Ungültige Quellen oder Zitierpositionen im Dokument.");
-            check.RestoreCitations(document.Citations,document.References);
-            references.ResetDocument();references.MergeDocument(document.References);references.BibliographyOnly=document.BibliographyOnly;editor.LoadRtf(document.Rtf);editor.RestoreCitations(document.Citations,references.References);references.SetStyle(document.Numbered);references.RefreshLibrary();assistant.ResetDocument(document.IgnoredHints);documentNote="";path=fileName;dirty=false;UpdateTitle();Statistics();return;
+            if(document.Margins!=null && !document.Margins.Valid)throw new FormatException("Ungültige Seitenränder im Dokument.");check.RestoreCitations(document.Citations,document.References);
+            references.ResetDocument();references.MergeDocument(document.References);references.BibliographyOnly=document.BibliographyOnly;editor.LoadRtf(document.Rtf);editor.SetMargins(document.Margins??new DocumentMargins(),false);editor.RestoreCitations(document.Citations,references.References);references.SetStyle(document.Numbered);references.RefreshLibrary();assistant.ResetDocument(document.IgnoredHints);documentNote="";path=fileName;dirty=false;UpdateTitle();Statistics();return;
         }
-        if(extension==".rtf"){var check=new DocumentEditor();string rtf=Convert.ToBase64String(File.ReadAllBytes(fileName));check.LoadRtf(rtf);editor.LoadRtf(rtf);assistant.ResetDocument();references.ResetDocument();documentNote="RTF-Dokument";path=fileName;dirty=false;UpdateTitle();Statistics();return;}
-        var imported=DocumentFiles.Read(fileName);var scratch=new DocumentEditor {Document=imported.Document};string content=scratch.SaveRtf();references.ResetDocument();editor.LoadRtf(content);assistant.ResetDocument();documentNote=imported.Note;path=imported.Converted?null:fileName;dirty=imported.Converted;UpdateTitle();Statistics();
+        if(extension==".rtf"){var check=new DocumentEditor();string rtf=Convert.ToBase64String(File.ReadAllBytes(fileName));check.LoadRtf(rtf);editor.LoadRtf(rtf);editor.SetMargins(new DocumentMargins(),false);assistant.ResetDocument();references.ResetDocument();documentNote="RTF-Dokument";path=fileName;dirty=false;UpdateTitle();Statistics();return;}
+        var imported=DocumentFiles.Read(fileName);var scratch=new DocumentEditor {Document=imported.Document};string content=scratch.SaveRtf();references.ResetDocument();editor.LoadRtf(content);editor.SetMargins(new DocumentMargins(),false);assistant.ResetDocument();documentNote=imported.Note;path=imported.Converted?null:fileName;dirty=imported.Converted;UpdateTitle();Statistics();
     }
     bool Save(bool saveAs)
     {
@@ -132,7 +141,7 @@ internal sealed class Schreib : Window
         {
             string extension=Path.GetExtension(target).ToLowerInvariant();
             if(extension!=".schreib" && (references.References.Count>0 || editor.Citations().Count>0) && MessageBox.Show("Quellverknüpfungen und importierte Referenzen bleiben nur im .schreib-Format erhalten. Trotzdem eine vereinfachte Datei speichern?","Dokumentformat",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return false;
-            Ui.AtomicWrite(target,delegate(string temp){if(extension==".schreib"){var document=new WritingDocument {Rtf=editor.SaveRtf(),References=references.DocumentReferences(),Citations=editor.Citations(),IgnoredHints=assistant.DismissedHints,BibliographyOnly=references.BibliographyOnly,Numbered=references.Numbered};File.WriteAllText(temp,new JavaScriptSerializer {MaxJsonLength=50000000}.Serialize(document),new UTF8Encoding(false));}else if(extension==".rtf")File.WriteAllBytes(temp,Convert.FromBase64String(editor.SaveRtf()));else File.WriteAllText(temp,editor.Text,new UTF8Encoding(true));});path=target;dirty=false;UpdateTitle();return true;
+            Ui.AtomicWrite(target,delegate(string temp){if(extension==".schreib"){var document=new WritingDocument {Rtf=editor.SaveRtf(),Margins=editor.PageMargins,References=references.DocumentReferences(),Citations=editor.Citations(),IgnoredHints=assistant.DismissedHints,BibliographyOnly=references.BibliographyOnly,Numbered=references.Numbered};File.WriteAllText(temp,new JavaScriptSerializer {MaxJsonLength=50000000}.Serialize(document),new UTF8Encoding(false));}else if(extension==".rtf")File.WriteAllBytes(temp,Convert.FromBase64String(editor.SaveRtf()));else File.WriteAllText(temp,editor.Text,new UTF8Encoding(true));});path=target;dirty=false;UpdateTitle();return true;
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Speichern fehlgeschlagen"); return false; }
     }
