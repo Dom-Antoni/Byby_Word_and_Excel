@@ -18,6 +18,8 @@ $javaZip = Download-File 'https://github.com/adoptium/temurin21-binaries/release
 $ltZip = Download-File 'https://languagetool.org/download/LanguageTool-6.6.zip' 'LanguageTool-6.6.zip' '53600506b399bb5ffe1e4c8dec794fd378212f14aaf38ccef9b6f89314d11631'
 $deZip = Download-File 'https://www.openthesaurus.de/export/OpenThesaurus-Textversion.zip' 'OpenThesaurus-Textversion.zip'
 $enTar = Download-File 'https://wordnetcode.princeton.edu/wn3.1.dict.tar.gz' 'wn3.1.dict.tar.gz' '3f7d8be8ef6ecc7167d39b10d66954ec734280b5bdcd57f7d9eafe429d11c22a'
+$pdfZip = Download-File 'https://api.nuget.org/v3-flatcontainer/pdfsharp-migradoc-wpf/1.50.5147/pdfsharp-migradoc-wpf.1.50.5147.nupkg' 'pdfsharp-migradoc-wpf.1.50.5147.zip' '9bc745850348376b97ac2a72c8e65d3f508ea09676d4cb9676bfe2df0f1ec557'
+if (!(Test-Path -LiteralPath (Join-Path $vendor 'pdf/lib/net30/PdfSharp-wpf.dll'))) { Expand-Archive -LiteralPath $pdfZip -DestinationPath (Join-Path $vendor 'pdf') -Force }
 if (!(Test-Path -LiteralPath (Join-Path $vendor 'jdk-21.0.12.1+1-jre\bin\java.exe'))) { Expand-Archive -LiteralPath $javaZip -DestinationPath $vendor -Force }
 if (!(Test-Path -LiteralPath (Join-Path $vendor 'LanguageTool-6.6\languagetool-server.jar'))) { Expand-Archive -LiteralPath $ltZip -DestinationPath $vendor -Force }
 $synonyms = Join-Path $vendor 'synonyms'
@@ -26,6 +28,6 @@ Expand-Archive -LiteralPath $deZip -DestinationPath $synonyms -Force
 & (Join-Path $env:WINDIR 'System32\tar.exe') -xzf $enTar -C $synonyms
 if ($LASTEXITCODE -ne 0) { throw 'WordNet konnte nicht entpackt werden.' }
 Get-Content -LiteralPath (Join-Path $synonyms 'dict\data.adj') -TotalCount 29 | ForEach-Object { $_ -replace '^\s+\d+\s', '' } | Set-Content -LiteralPath (Join-Path $synonyms 'dict\LICENSE.txt') -Encoding utf8
-$manifest = @($javaZip, $ltZip, $deZip, $enTar) | ForEach-Object { @{file=(Split-Path $_ -Leaf);sha256=(Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant()} }
+$manifest = @($javaZip, $ltZip, $deZip, $enTar, $pdfZip) | ForEach-Object { @{file=(Split-Path $_ -Leaf);sha256=(Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant()} }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $vendor 'downloads.json') -Encoding utf8
 Write-Output 'Offline-Komponenten bereit. Jetzt build.ps1 ausführen.'

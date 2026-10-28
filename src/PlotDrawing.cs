@@ -24,7 +24,7 @@ internal sealed class PlotScene
 }
 internal static class PlotDrawing
 {
-    static readonly string[] Colors={"#2675D8","#0D947C"};
+    internal static readonly string[] Colors={"#2675D8","#0D947C"};
     static string Trim(string value,int length){value=(value??"").Replace("\r"," ").Replace("\n"," ");return value.Length>length?value.Substring(0,Math.Max(1,length-1))+"…":value;}
     static void Text(PlotScene scene,string text,double x,double y,double size,string color,string anchor="start",bool bold=false,double rotate=0)
     {scene.Shapes.Add(new PlotShape {Type="text",Text=text,X=x,Y=y,Size=size,Fill=color,Anchor=anchor,Bold=bold,Rotate=rotate});}

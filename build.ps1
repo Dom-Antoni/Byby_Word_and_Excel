@@ -7,6 +7,8 @@ $output = Join-Path $PSScriptRoot $OutputDirectory
 New-Item -ItemType Directory -Force -Path $output | Out-Null
 $references = @('System.dll', 'System.Core.dll', 'System.Data.dll', 'System.Net.Http.dll', 'System.Web.Extensions.dll', 'System.Xml.dll', 'System.Xaml.dll', 'System.Xml.Linq.dll', 'System.IO.Compression.dll', 'System.IO.Compression.FileSystem.dll') | ForEach-Object { '/reference:' + (Join-Path $framework $_) }
 $references += @('PresentationFramework.dll', 'PresentationCore.dll', 'WindowsBase.dll') | ForEach-Object { '/reference:' + (Join-Path $wpf $_) }
+$pdfDlls=@('PdfSharp-wpf.dll','MigraDoc.DocumentObjectModel-wpf.dll','MigraDoc.Rendering-wpf.dll')
+foreach($dll in $pdfDlls){$source=Join-Path $PSScriptRoot ('vendor/pdf/lib/net30/'+$dll);if(!(Test-Path -LiteralPath $source)){throw 'PDF-Komponenten fehlen. Bitte setup-offline.ps1 ausführen.'};Copy-Item -LiteralPath $source -Destination $output -Force;$references+=('/reference:'+$source)}
 $iconDirectory=Join-Path $output 'icons'
 $iconBuilder=Join-Path $output 'IconBuilder.exe'
 & $compiler /nologo /target:exe ('/out:'+$iconBuilder) $references (Join-Path $PSScriptRoot 'tools\IconBuilder.cs')
@@ -15,8 +17,8 @@ if ($LASTEXITCODE -ne 0) {throw 'Icon-Werkzeug konnte nicht gebaut werden.'}
 if ($LASTEXITCODE -ne 0) {throw 'App-Icons konnten nicht erzeugt werden.'}
 foreach ($app in @('Schreib', 'Tabelle')) {
     $sources = @((Join-Path $PSScriptRoot 'src\Common.cs'), (Join-Path $PSScriptRoot 'src\Theme.cs'), (Join-Path $PSScriptRoot 'src\Proofing.cs'), (Join-Path $PSScriptRoot 'src\DocumentLayout.cs'), (Join-Path $PSScriptRoot 'src\Formats.cs'), (Join-Path $PSScriptRoot ('src\' + $app + '.cs')))
-    if ($app -eq 'Schreib') { $sources += @('Writing.cs','Grammar.cs','Synonyms.cs','WritingPanel.cs','WritingSettingsWindow.cs','DocumentEditor.cs','DocumentFiles.cs','PageSurface.cs','References.cs','ReferencePanel.cs','Completion.cs','ReferenceStore.cs','ReferenceLookup.cs','ReferencePickerWindow.cs') | ForEach-Object { Join-Path $PSScriptRoot ('src\' + $_) } }
-    if ($app -eq 'Tabelle') { $sources += @('SheetFiles.cs','PlotData.cs','PlotGrouping.cs','PlotDrawing.cs','PlotPanel.cs') | ForEach-Object {Join-Path $PSScriptRoot ('src\' + $_)} }
+    if ($app -eq 'Schreib') { $sources += @('Writing.cs','Grammar.cs','Synonyms.cs','WritingPanel.cs','WritingSettingsWindow.cs','DocumentEditor.cs','DocumentImages.cs','PdfExport.cs','DocumentFiles.cs','PageSurface.cs','References.cs','ReferencePanel.cs','Completion.cs','ReferenceStore.cs','ReferenceLookup.cs','ReferencePickerWindow.cs') | ForEach-Object { Join-Path $PSScriptRoot ('src\' + $_) } }
+    if ($app -eq 'Tabelle') { $sources += @('SheetFiles.cs','PlotData.cs','PlotGrouping.cs','PlotDrawing.cs','PlotPanel.cs','RExport.cs') | ForEach-Object {Join-Path $PSScriptRoot ('src\' + $_)} }
     $icon=Join-Path $iconDirectory ($app+'.ico')
     & $compiler /nologo /target:winexe /platform:anycpu /optimize+ ('/out:' + (Join-Path $output ($app + '.exe'))) ('/win32icon:'+$icon) ('/resource:'+$icon+',Byby.AppIcon.ico') $references $sources
     if ($LASTEXITCODE -ne 0) { throw "Build fehlgeschlagen: $app" }

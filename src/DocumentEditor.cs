@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 internal sealed class DocumentEditor : RichTextBox
 {
@@ -38,6 +39,21 @@ internal sealed class DocumentEditor : RichTextBox
     List<ProofMark> proofMarks=new List<ProofMark>();
     readonly SolidColorBrush pageInk=new SolidColorBrush(Colors.Black);
     readonly SolidColorBrush citationInk=new SolidColorBrush(Color.FromRgb(100,118,140));
+    static readonly string imageCache=Path.Combine(Path.GetTempPath(),"Schreib-Bilder-"+Guid.NewGuid().ToString("N"));
+    static readonly List<string> cachedImageFiles=new List<string>();
+    static DocumentEditor()
+    {
+        AppDomain.CurrentDomain.ProcessExit+=delegate{foreach(string file in cachedImageFiles)try{File.Delete(file);}catch(IOException){}catch(UnauthorizedAccessException){}try{if(Directory.Exists(imageCache))Directory.Delete(imageCache);}catch(IOException){}catch(UnauthorizedAccessException){}};
+    }
+    // WPF's undo stores embedded UI as XAML. Stream-only images cannot be replayed.
+    // URI-backed BitmapFrames serialize as an Image.Source URI and survive undo;
+    // RTF still embeds the pixels, so saved documents have no cache dependency.
+    internal static BitmapSource UndoableImage(BitmapSource source)
+    {
+        var existing=source as BitmapImage;if(existing!=null && existing.UriSource!=null && existing.UriSource.IsAbsoluteUri && existing.UriSource.IsFile && existing.UriSource.LocalPath.StartsWith(imageCache+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))return source;
+        Directory.CreateDirectory(imageCache);string file=Path.Combine(imageCache,Guid.NewGuid().ToString("N")+".png");var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(source));using(var stream=File.Create(file))encoder.Save(stream);cachedImageFiles.Add(file);
+        var image=BitmapFrame.Create(new Uri(file),BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad);image.Freeze();return image;
+    }
     public DocumentEditor()
     {
         AcceptsReturn=true;AcceptsTab=true;IsDocumentEnabled=true;
@@ -63,6 +79,8 @@ internal sealed class DocumentEditor : RichTextBox
         get{if(cachedText==null){TextSnapshotBuilds++;string text=new TextRange(Document.ContentStart,Document.ContentEnd).Text;cachedText=text.EndsWith("\r\n")?text.Substring(0,text.Length-2):text;}return cachedText;}
         set{Document.Blocks.Clear();foreach(string line in (value??"").Replace("\r\n","\n").Split('\n'))Document.Blocks.Add(new Paragraph(new Run(line)));ApplyAppearance(darkPaper);}
     }
+    public bool HasImages {get{return ContainsImage(Document);}}
+    static bool ContainsImage(DependencyObject root){foreach(object child in LogicalTreeHelper.GetChildren(root)){if(child is Image)return true;var d=child as DependencyObject;if(d!=null && ContainsImage(d))return true;}return false;}
     internal TextPointer Pointer(int offset)
     {
         offset=Math.Max(0,Math.Min(offset,Text.Length));
@@ -99,7 +117,7 @@ internal sealed class DocumentEditor : RichTextBox
     public string SelectedText{get{return Selection.Text;}set{ReplaceSelection(value);}}
     public string ProofText
     {
-        get{var text=Text.ToCharArray();foreach(var mark in Citations())for(int i=mark.Start;i<Math.Min(text.Length,mark.Start+mark.Length);i++)if(text[i]!='\r' && text[i]!='\n')text[i]=' ';return new string(text);}
+        get{var text=Text.ToCharArray();for(int i=0;i<text.Length;i++)if(text[i]=='\ufffc')text[i]=' ';foreach(var mark in Citations())for(int i=mark.Start;i<Math.Min(text.Length,mark.Start+mark.Length);i++)if(text[i]!='\r' && text[i]!='\n')text[i]=' ';return new string(text);}
     }
     public void Select(int start,int length){Selection.Select(Pointer(start),Pointer(start+length));}
     public void Clear(){Text="";}
@@ -224,7 +242,7 @@ internal sealed class DocumentEditor : RichTextBox
     }
     static void Normalize(DependencyObject root)
     {
-        foreach(object item in LogicalTreeHelper.GetChildren(root)){var element=item as TextElement;if(element!=null){var foreground=element.ReadLocalValue(TextElement.ForegroundProperty) as SolidColorBrush;if(foreground!=null && foreground.Color==Colors.Black)element.ClearValue(TextElement.ForegroundProperty);var background=element.ReadLocalValue(TextElement.BackgroundProperty) as SolidColorBrush;if(background!=null && background.Color==Colors.White)element.ClearValue(TextElement.BackgroundProperty);}var child=item as DependencyObject;if(child!=null)Normalize(child);}
+        foreach(object item in LogicalTreeHelper.GetChildren(root)){var image=item as Image;if(image!=null && image.Source is BitmapSource)image.Source=UndoableImage((BitmapSource)image.Source);var element=item as TextElement;if(element!=null){var foreground=element.ReadLocalValue(TextElement.ForegroundProperty) as SolidColorBrush;if(foreground!=null && foreground.Color==Colors.Black)element.ClearValue(TextElement.ForegroundProperty);var background=element.ReadLocalValue(TextElement.BackgroundProperty) as SolidColorBrush;if(background!=null && background.Color==Colors.White)element.ClearValue(TextElement.BackgroundProperty);}var child=item as DependencyObject;if(child!=null)Normalize(child);}
     }
     public void RestoreCitations(IEnumerable<CitationMark> marks,IEnumerable<Reference> references)
     {

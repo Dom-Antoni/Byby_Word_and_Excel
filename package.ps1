@@ -1,7 +1,7 @@
 param([string]$OutputDirectory='dist')
 $ErrorActionPreference = 'Stop'
 $output = Join-Path $PSScriptRoot $OutputDirectory
-foreach ($required in @('Schreib.exe','Tabelle.exe','icons/Schreib.ico','icons/Tabelle.ico','runtime/bin/java.exe','languagetool/languagetool-server.jar','synonyms/openthesaurus.txt','synonyms/dict/data.noun','synonyms/dict/LICENSE.txt')) {
+foreach ($required in @('Schreib.exe','Tabelle.exe','PdfSharp-wpf.dll','MigraDoc.DocumentObjectModel-wpf.dll','MigraDoc.Rendering-wpf.dll','icons/Schreib.ico','icons/Tabelle.ico','runtime/bin/java.exe','languagetool/languagetool-server.jar','synonyms/openthesaurus.txt','synonyms/dict/data.noun','synonyms/dict/LICENSE.txt')) {
     if (!(Test-Path -LiteralPath (Join-Path $output $required))) { throw "Offline-Paket unvollständig: $required. setup-offline.ps1 und build.ps1 ausführen." }
 }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -9,7 +9,7 @@ $target = Join-Path $output 'Byby_Word_and_Excel-Windows-x64-offline.zip'
 $temporary = Join-Path $output ('package-' + [guid]::NewGuid().ToString('N') + '.zip')
 $archive = [System.IO.Compression.ZipFile]::Open($temporary, [System.IO.Compression.ZipArchiveMode]::Create)
 try {
-    foreach ($name in @('Schreib.exe','Tabelle.exe')) {
+    foreach ($name in @('Schreib.exe','Tabelle.exe','PdfSharp-wpf.dll','MigraDoc.DocumentObjectModel-wpf.dll','MigraDoc.Rendering-wpf.dll')) {
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, (Join-Path $output $name), $name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
     }
     foreach ($name in @('README.md','LICENSE','THIRD-PARTY-NOTICES.md','VERSION')) {

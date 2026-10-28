@@ -139,6 +139,7 @@ internal sealed class Tabelle : Window
         var quick=new WrapPanel {Margin=new Thickness(16,8,16,10)};ribbon.Children.Add(quick);
         Ui.Button(quick,"Öffnen…",Open);Ui.Button(quick,"Speichern",delegate{Save();});Ui.Button(quick,"Spalten anpassen",FitColumns);
         Ui.Button(quick,"Plot erstellen",delegate{SetPlotsVisible(true);});
+        Ui.Button(quick,"In RStudio öffnen…",delegate{ExportR(true);});
         modeLabel.VerticalAlignment=VerticalAlignment.Center;modeLabel.Margin=new Thickness(12,0,0,0);Theme.Bind(modeLabel,TextBlock.ForegroundProperty,"App.Muted");quick.Children.Add(modeLabel);
         var formulaBar=new DockPanel {Margin=new Thickness(16,10,16,8)};DockPanel.SetDock(formulaBar,Dock.Top);root.Children.Add(formulaBar);
         address.Width=84;address.Padding=new Thickness(8);address.Margin=new Thickness(0,0,10,0);address.ToolTip="Zelladresse, zum Beispiel D25. Enter springt zur Zelle.";
@@ -182,6 +183,7 @@ internal sealed class Tabelle : Window
     void BuildMenus(Menu menus)
     {
         var file=Item(menus,"_Datei");Item(file,"_Neu",New,"Strg+N");Item(file,"Ö_ffnen / Importieren…",Open,"Strg+O");Item(file,"_Speichern",delegate{Save();},"Strg+S");Item(file,"Speichern unter / Blatt exportieren…",delegate{Save(true);});file.Items.Add(new Separator());Item(file,"Schließen",Close,"Alt+F4");
+        Item(file,"R-Projekt exportieren…",delegate{ExportR(false);});
         var edit=Item(menus,"_Bearbeiten");editItem=Check(edit,"Bearbeitung aktivieren",true,delegate(MenuItem item){Sync();editing=item.IsChecked;if(editing){results=false;resultItem.IsChecked=false;}Render();});
         var copy=Item(edit,"Auswahl kopieren",null,"Strg+C");copy.Command=System.Windows.Input.ApplicationCommands.Copy;copy.CommandTarget=grid;
         Item(edit,"_Suchen…",ShowSearch,"Strg+F");edit.Items.Add(new Separator());
@@ -338,6 +340,16 @@ internal sealed class Tabelle : Window
         }
         finally{rendering=false;}
         SelectCell(selectedRow,selectedCol);UpdateStatus();plots.SourceChanged();
+    }
+    async void ExportR(bool open)
+    {
+        try
+        {
+            Sync();var dialog=new SaveFileDialog {Filter="Neues R-Projekt (*.Rproj)|*.Rproj",FileName="Tabelle-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+".Rproj",Title="Aktuelles Blatt nach R · eigener Unterordner wird angelegt"};if(dialog.ShowDialog()!=true)return;
+            var result=RExport.Create(Path.Combine(Path.GetDirectoryName(dialog.FileName),Path.GetFileNameWithoutExtension(dialog.FileName)),PlotInput());
+            note.Text="R-Projekt gespeichert. Lokales R lädt die Daten…";await RExport.PrepareObjects(result);note.Text=result.Message;if(open)RExport.Open(result);else MessageBox.Show(result.Message+"\n\n"+result.Directory,"R-Export");
+        }
+        catch(Exception ex){MessageBox.Show(ex.Message,"R-Export fehlgeschlagen");}
     }
     void ShowCell()
     {

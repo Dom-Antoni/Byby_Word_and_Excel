@@ -40,6 +40,8 @@ internal sealed class PlotPanel : DockPanel,IDisposable
         var actions=new DockPanel {Margin=new Thickness(10,0,10,6)};DockPanel.SetDock(actions,Dock.Top);Children.Add(actions);
         var suggest=Ui.Button(actions,"Vorschläge",Suggestions);DockPanel.SetDock(suggest,Dock.Right);suggest.Padding=new Thickness(9,5,9,5);
         export=Ui.Button(actions,"Export…",Export);DockPanel.SetDock(export,Dock.Right);export.Padding=new Thickness(9,5,9,5);
+        var rActions=new WrapPanel {Margin=new Thickness(10,0,10,4)};DockPanel.SetDock(rActions,Dock.Top);Children.Add(rActions);
+        Ui.Button(rActions,"ggplot / R exportieren…",delegate{ExportR(false);});Ui.Button(rActions,"In RStudio öffnen…",delegate{ExportR(true);});
         kind.ItemsSource=Plots.KindNames;kind.Padding=new Thickness(6);actions.Children.Add(kind);
         var axes=new Grid {Margin=new Thickness(10,0,10,5)};axes.ColumnDefinitions.Add(new ColumnDefinition());axes.ColumnDefinitions.Add(new ColumnDefinition());DockPanel.SetDock(axes,Dock.Top);Children.Add(axes);
         var left=new StackPanel {Margin=new Thickness(0,0,5,0)};var right=new StackPanel {Margin=new Thickness(5,0,0,0)};axes.Children.Add(left);Grid.SetColumn(right,1);axes.Children.Add(right);
@@ -179,6 +181,19 @@ internal sealed class PlotPanel : DockPanel,IDisposable
         if(dialog.ShowDialog()!=true)return;
         try{int width=resolution.SelectedIndex==0?1200:resolution.SelectedIndex==2?2400:1800;ExportTo(dialog.FileName,width,width*2/3);notice.Text="Exportiert: "+Path.GetFileName(dialog.FileName)+" · "+width+" × "+(width*2/3)+" · "+view.Data.Notice;}
         catch(Exception ex){MessageBox.Show(ex.Message,"Plot konnte nicht exportiert werden");}
+    }
+    async void ExportR(bool open)
+    {
+        try
+        {
+            Refresh(false);if(view.Data==null)throw new FormatException("Bitte zuerst einen gültigen Plot erstellen.");
+            var dialog=new SaveFileDialog {Filter="Neues R-Projekt (*.Rproj)|*.Rproj",FileName="Plot-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+".Rproj",Title="R-Projekt exportieren · eigener Unterordner wird angelegt"};if(dialog.ShowDialog()!=true)return;
+            int width=resolution.SelectedIndex==0?1200:resolution.SelectedIndex==2?2400:1800;
+            var result=RExport.Create(Path.Combine(Path.GetDirectoryName(dialog.FileName),Path.GetFileNameWithoutExtension(dialog.FileName)),source(),view.Data,options.Numbers,width,width*2/3);
+            notice.Text="R-Projekt gespeichert. Lokales R erzeugt die Objekte im Hintergrund…";await RExport.PrepareObjects(result);notice.Text=result.Message;
+            if(open)RExport.Open(result);else MessageBox.Show(result.Message+"\n\n"+result.Directory,"R-Export");
+        }
+        catch(Exception ex){MessageBox.Show(ex.Message,"R-Export fehlgeschlagen");}
     }
     void Enlarge()
     {

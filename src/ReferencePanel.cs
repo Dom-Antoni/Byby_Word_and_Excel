@@ -156,8 +156,8 @@ internal sealed class ReferencePanel : DockPanel
         }
         else
         {
-            clone.Document.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run("Literaturverzeichnis")){FontWeight=FontWeights.Bold});
-            var used=Used();for(int i=0;i<used.Count;i++)clone.Document.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run((Numbered?"["+(References.IndexOf(used[i])+1)+"] ":"")+used[i].Bibliography)));
+            var used=Used();if(used.Count>0)clone.Document.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run("Literaturverzeichnis")){FontWeight=FontWeights.Bold});
+            for(int i=0;i<used.Count;i++)clone.Document.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run((Numbered?"["+(References.IndexOf(used[i])+1)+"] ":"")+used[i].Bibliography)));
         }
         return clone.SaveRtf();
     }

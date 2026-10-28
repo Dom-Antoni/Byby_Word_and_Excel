@@ -1,5 +1,7 @@
 # Mitgelieferte Offline-Komponenten
 
+- **PDFsharp und MigraDoc WPF 1.50.5147**: PDF-Erzeugung aus Text, Formatierung und Bildern, MIT, Copyright empira Software GmbH. Offizielles Paket: https://www.nuget.org/packages/PDFsharp-MigraDoc-WPF/1.50.5147. Quellcode: https://github.com/empira/PDFsharp-1.5. Originaler Lizenztext: `docs/licenses/PDFsharp-MigraDoc.txt`. Die drei Bibliotheken liegen neben Schreib.exe. Es werden ausschließlich neue PDFs erzeugt; die Apps importieren keine PDFs mit dieser Bibliothek.
+
 Der Anwendungscode von Byby_Word_and_Excel steht unter MIT. Die nachstehenden unveränderten Komponenten und Daten behalten ihre eigenen Lizenzen; sie werden nicht unter MIT neu lizenziert.
 
 - **LanguageTool 6.6**: lokaler Sprachprüfer, LGPL 2.1 oder später. Quelle: https://github.com/languagetool-org/languagetool / https://languagetool.org/download/LanguageTool-6.6.zip. Vollständiger Quellcode zur Distribution: https://github.com/languagetool-org/languagetool/tree/v6.6. Mitgelieferte Lizenz und Hinweise: `languagetool/COPYING.txt`, `languagetool/third-party-licenses/`. Unverändert als separater Prozess verwendet. Sämtliche Lizenzdateien der Distribution bleiben im Paket.

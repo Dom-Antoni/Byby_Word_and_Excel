@@ -74,3 +74,5 @@ Geplante Entwicklungsschritte stehen in [ROADMAP.md](ROADMAP.md). Technische Gru
 Öffentliches Repository: [Dom-Antoni/Byby_Word_and_Excel](https://github.com/Dom-Antoni/Byby_Word_and_Excel). Fertige Apps gibt es ohne Anmeldung unter [Releases](https://github.com/Dom-Antoni/Byby_Word_and_Excel/releases/latest). Der Workflow prüft die Apps und beide Installationswege und veröffentlicht neue `VERSION`-Werte als feste Releases. Enthalten sind Download-Setup, Offline-Setup, portable ZIP und Prüfsummen. Einzelne App-EXE-Dateien benötigen weiterhin die mitgelieferten Sprachkomponenten.
 
 Lizenz: MIT, siehe [LICENSE](LICENSE).
+
+PDF-Export, Bilder mit Beschriftung und RStudio-/ggplot-Export: siehe [Bedienung](docs/PDF-BILDER-UND-R.md).

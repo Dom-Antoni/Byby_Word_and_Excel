@@ -59,6 +59,8 @@ internal sealed class Schreib : Window
         var size=new ComboBox {Width=60,ItemsSource=new[]{12.0,14,16,18,20,24,28,32},SelectedIndex=2,Margin=new Thickness(0,0,8,0)};format.Children.Add(size);size.SelectionChanged+=delegate{editor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty,(double)size.SelectedItem);editor.Focus();};
         Ui.Button(format,"Fett",delegate{EditingCommands.ToggleBold.Execute(null,editor);});Ui.Button(format,"Kursiv",delegate{EditingCommands.ToggleItalic.Execute(null,editor);});
         var file=Item(menus,"_Datei");Item(file,"_Neu",New,"Strg+N");Item(file,"Ö_ffnen…",Open,"Strg+O");Item(file,"_Speichern",delegate{Save(false);},"Strg+S");Item(file,"Speichern _unter…",delegate{Save(true);},"Strg+Umschalt+S");file.Items.Add(new Separator());var export=Item(file,"Exportieren");Item(export,"RTF mit Literaturverzeichnis…",delegate{Export(false);});Item(export,"RTF für EndNote…",delegate{Export(true);});file.Items.Add(new Separator());Item(file,"Schließen",Close,"Alt+F4");
+        Item(export,"PDF…",ExportPdf);
+        var insert=Item(menus,"_Einfügen");Item(insert,"Bild mit Beschriftung…",delegate{DocumentImages.Choose(editor,this);});
         var edit=Item(menus,"_Bearbeiten");Command(edit,"Rückgängig",ApplicationCommands.Undo,"Strg+Z");Command(edit,"Wiederholen",ApplicationCommands.Redo,"Strg+Y");edit.Items.Add(new Separator());Command(edit,"Ausschneiden",ApplicationCommands.Cut,"Strg+X");Command(edit,"Kopieren",ApplicationCommands.Copy,"Strg+C");Command(edit,"Einfügen",ApplicationCommands.Paste,"Strg+V");Command(edit,"Alles auswählen",ApplicationCommands.SelectAll,"Strg+A");
         var formatting=Item(menus,"F_ormat");Command(formatting,"Fett",EditingCommands.ToggleBold,"Strg+B");Command(formatting,"Kursiv",EditingCommands.ToggleItalic,"Strg+I");Command(formatting,"Unterstrichen",EditingCommands.ToggleUnderline,"Strg+U");Item(formatting,"Überschrift",delegate{editor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty,26.0);editor.Selection.ApplyPropertyValue(TextElement.FontWeightProperty,FontWeights.Bold);editor.Focus();});Item(formatting,"Normaler Text",delegate{editor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty,16.0);editor.Selection.ApplyPropertyValue(TextElement.FontWeightProperty,FontWeights.Normal);editor.Focus();});Command(formatting,"Aufzählung",EditingCommands.ToggleBullets);Command(formatting,"Linksbündig",EditingCommands.AlignLeft);Command(formatting,"Zentriert",EditingCommands.AlignCenter);Command(formatting,"Rechtsbündig",EditingCommands.AlignRight);
         var layout=Item(menus,"_Layout");Item(layout,"Seitenränder…",delegate{new PageMarginsWindow(editor){Owner=this}.ShowDialog();});
@@ -140,10 +142,17 @@ internal sealed class Schreib : Window
         try
         {
             string extension=Path.GetExtension(target).ToLowerInvariant();
+            if(extension!=".schreib" && extension!=".rtf" && editor.HasImages && MessageBox.Show("Textdateien speichern keine Bilder. Für Bilder bitte .schreib oder .rtf wählen. Trotzdem nur den Text speichern?","Bilder im Dokument",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return false;
             if(extension!=".schreib" && (references.References.Count>0 || editor.Citations().Count>0) && MessageBox.Show("Quellverknüpfungen und importierte Referenzen bleiben nur im .schreib-Format erhalten. Trotzdem eine vereinfachte Datei speichern?","Dokumentformat",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return false;
             Ui.AtomicWrite(target,delegate(string temp){if(extension==".schreib"){var document=new WritingDocument {Rtf=editor.SaveRtf(),Margins=editor.PageMargins,References=references.DocumentReferences(),Citations=editor.Citations(),IgnoredHints=assistant.DismissedHints,BibliographyOnly=references.BibliographyOnly,Numbered=references.Numbered};File.WriteAllText(temp,new JavaScriptSerializer {MaxJsonLength=50000000}.Serialize(document),new UTF8Encoding(false));}else if(extension==".rtf")File.WriteAllBytes(temp,Convert.FromBase64String(editor.SaveRtf()));else File.WriteAllText(temp,editor.Text,new UTF8Encoding(true));});path=target;dirty=false;UpdateTitle();return true;
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Speichern fehlgeschlagen"); return false; }
+    }
+    void ExportPdf()
+    {
+        var dialog=new SaveFileDialog {Filter="PDF-Dokument (*.pdf)|*.pdf",DefaultExt=".pdf",FileName=path==null?"Dokument.pdf":Path.GetFileNameWithoutExtension(path)+".pdf"};if(dialog.ShowDialog()!=true)return;
+        var copy=new DocumentEditor();copy.LoadRtf(references.ExportRtf(false));copy.SetMargins(editor.PageMargins,false);
+        int pages=PdfExport.Write(copy,dialog.FileName,Path.GetFileNameWithoutExtension(dialog.FileName));status.Text="PDF exportiert · "+pages+" Seite(n) · "+dialog.FileName;
     }
     void Export(bool endnote)
     {

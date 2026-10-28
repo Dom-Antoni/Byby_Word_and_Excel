@@ -9,6 +9,7 @@ dist-icons/
 dist-review/
 dist-setup/
 dist-layout/
+dist-export/
 .downloads/
 vendor/
 *.user

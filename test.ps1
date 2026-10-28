@@ -5,9 +5,10 @@ $output=Join-Path $PSScriptRoot $OutputDirectory
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $framework = Split-Path $compiler
 $themeSource=@('src/Theme.cs','src/Proofing.cs','src/DocumentLayout.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
-$plotSources=@('src/PlotData.cs','src/PlotGrouping.cs','src/PlotDrawing.cs','src/PlotPanel.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
+$plotSources=@('src/PlotData.cs','src/PlotGrouping.cs','src/PlotDrawing.cs','src/PlotPanel.cs','src/RExport.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
 $references = @('System.dll','System.Core.dll','System.Data.dll','System.Net.Http.dll','System.Web.Extensions.dll','System.Xaml.dll','System.Xml.dll','System.Xml.Linq.dll','System.IO.Compression.dll','System.IO.Compression.FileSystem.dll') | ForEach-Object { '/reference:' + (Join-Path $framework $_) }
 $references += @('PresentationFramework.dll','PresentationCore.dll','WindowsBase.dll') | ForEach-Object { '/reference:' + (Join-Path (Join-Path $framework 'WPF') $_) }
+$references += @('PdfSharp-wpf.dll','MigraDoc.DocumentObjectModel-wpf.dll','MigraDoc.Rendering-wpf.dll') | ForEach-Object {'/reference:'+(Join-Path $output $_)}
 if (!$DocumentsOnly -and !$ViewsOnly) {
 if (!$PlotsOnly) {
 & $compiler /nologo /target:exe /main:Checks ('/out:' + (Join-Path $output 'Checks.exe')) $references $themeSource $plotSources (Join-Path $PSScriptRoot 'src\Common.cs') (Join-Path $PSScriptRoot 'src\Formats.cs') (Join-Path $PSScriptRoot 'src\SheetFiles.cs') (Join-Path $PSScriptRoot 'src\Tabelle.cs') (Join-Path $PSScriptRoot 'tests\Checks.cs')
@@ -44,11 +45,12 @@ if ($LASTEXITCODE -ne 0) {throw 'Editorprüfungen konnten nicht gebaut werden.'}
 & (Join-Path $output 'EditorReviewChecks.exe')
 if ($LASTEXITCODE -ne 0) {throw 'Editorprüfungen fehlgeschlagen.'}
 $interactionSources=@($editorSources | Where-Object {$_ -ne (Join-Path $PSScriptRoot 'tests/EditorReviewChecks.cs')})
-$interactionSources+=@('src/Formats.cs','src/DocumentFiles.cs','src/ReferencePanel.cs','src/ReferenceLookup.cs','src/ReferencePickerWindow.cs','src/Completion.cs','src/PageSurface.cs','src/Schreib.cs','tests/LayoutInteractionChecks.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
+$interactionSources+=@('src/Formats.cs','src/DocumentFiles.cs','src/DocumentImages.cs','src/PdfExport.cs','src/ReferencePanel.cs','src/ReferenceLookup.cs','src/ReferencePickerWindow.cs','src/Completion.cs','src/PageSurface.cs','src/Schreib.cs','tests/LayoutInteractionChecks.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
 & $compiler /nologo /target:exe /main:LayoutInteractionChecks ('/out:'+(Join-Path $output 'LayoutInteractionChecks.exe')) $references $themeSource $interactionSources
 if ($LASTEXITCODE -ne 0) {throw 'Layout- und Reaktionsprüfungen konnten nicht gebaut werden.'}
 & (Join-Path $output 'LayoutInteractionChecks.exe')
 if ($LASTEXITCODE -ne 0) {throw 'Layout- und Reaktionsprüfungen fehlgeschlagen.'}
+& (Join-Path $PSScriptRoot 'test-exports.ps1') -OutputDirectory $OutputDirectory
 $lookupSources=@('src/Common.cs','src/References.cs','src/ReferenceStore.cs','src/ReferenceLookup.cs','tests/ReferenceLookupChecks.cs') | ForEach-Object {Join-Path $PSScriptRoot $_}
 & $compiler /nologo /target:exe /main:ReferenceLookupChecks ('/out:'+(Join-Path $output 'ReferenceLookupChecks.exe')) $references $themeSource $lookupSources
 if ($LASTEXITCODE -ne 0) {throw 'Linktests konnten nicht gebaut werden.'}
